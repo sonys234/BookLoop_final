@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookLoop - Buy & Sell Books</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chat-bubble {
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .book-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .book-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .filter-chip {
+            transition: all 0.2s ease;
+        }
+        .filter-chip:hover {
+            transform: scale(1.05);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-indigo-600">📚 BookLoop</h1>
+                    <nav class="hidden md:flex space-x-6">
+                        <button onclick="showTab('home')" class="nav-btn text-gray-700 hover:text-indigo-600 font-medium">Home</button>
+                        <button onclick="showTab('buy')" class="nav-btn text-gray-700 hover:text-indigo-600 font-medium">Buy</button>
+                        <button onclick="showTab('sell')" class="nav-btn text-gray-700 hover:text-indigo-600 font-medium">Sell</button>
+                        <button onclick="showTab('profile')" class="nav-btn text-gray-700 hover:text-indigo-600 font-medium">Profile</button>
+                    </nav>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleChat()" class="relative p-2 text-gray-600 hover:text-indigo-600">
+                        💬
+                        <span id="chat-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                    </button>
+                    <div class="relative group">
+                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center cursor-pointer">
+                            <span class="text-indigo-600 font-semibold">U</span>
+                        </div>
+                        <!-- Dropdown Menu -->
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="py-2">
+                                <button onclick="showTab('profile')" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">View Profile</button>
+                                <button onclick="logout()" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Sign Out</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 py-6 hidden">
+        <!-- Home Tab -->
+        <div id="home-tab" class="tab-content">
+            <!-- Sort Options -->
+            <div class="flex flex-wrap gap-3 mb-6">
+                <button onclick="sortBooks('newest')" class="filter-chip bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium">Newest</button>
+                <button onclick="sortBooks('price')" class="filter-chip bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-50">Price: Low to High</button>
+                <button onclick="sortBooks('nearby')" class="filter-chip bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-50">Nearby</button>
+            </div>
+
+            <!-- Book Feed -->
+            <div id="book-feed" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Empty state when no books -->
+                <div class="col-span-full empty-state">
+                    <div class="text-6xl mb-4">📚</div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">No books listed yet</h3>
+                    <p class="text-gray-600 mb-4">Be the first to list a book and start the BookLoop community!</p>
+                    <button onclick="showTab('sell')" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">List Your First Book</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buy Tab -->
+        <div id="buy-tab" class="tab-content hidden">
+            <!-- Search and Filters -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <div class="flex flex-col md:flex-row gap-4 mb-4">
+                    <input type="text" id="search-input" placeholder="Search books, authors..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <button onclick="searchBooks()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">Search</button>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <select id="genre-filter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        <option value="">All Genres</option>
+                        <option value="fiction">Fiction</option>
+                        <option value="non-fiction">Non-Fiction</option>
+                        <option value="science">Science</option>
+                        <option value="history">History</option>
+                        <option value="romance">Romance</option>
+                        <option value="mystery">Mystery</option>
+                    </select>
+                    
+                    <select id="condition-filter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        <option value="">All Conditions</option>
+                        <option value="new">New</option>
+                        <option value="slightly-used">Slightly Used</option>
+                        <option value="well-read">Well-Read</option>
+                    </select>
+                    
+                    <input type="number" id="min-price" placeholder="Min Price" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    <input type="number" id="max-price" placeholder="Max Price" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="col-span-full empty-state">
+                    <div class="text-6xl mb-4">🔍</div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Start your search</h3>
+                    <p class="text-gray-600">Use the search bar and filters above to find the perfect book!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sell Tab -->
+        <div id="sell-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">List Your Book</h2>
+                
+                <form onsubmit="listBook(event)" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Book Title *</label>
+                            <input type="text" id="book-title" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Author *</label>
+                            <input type="text" id="book-author" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Genre *</label>
+                            <select id="book-genre" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Select Genre</option>
+                                <option value="fiction">Fiction</option>
+                                <option value="non-fiction">Non-Fiction</option>
+                                <option value="science">Science</option>
+                                <option value="history">History</option>
+                                <option value="romance">Romance</option>
+                                <option value="mystery">Mystery</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Condition *</label>
+                            <select id="book-condition" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Select Condition</option>
+                                <option value="new">New</option>
+                                <option value="slightly-used">Slightly Used</option>
+                                <option value="well-read">Well-Read</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Price ($) *</label>
+                            <input type="number" id="book-price" required min="1" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Pickup Location *</label>
+                            <input type="text" id="pickup-location" required placeholder="e.g., Campus Library, Downtown" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                        <textarea id="book-description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Any additional details about the book..."></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Photos</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors cursor-pointer" onclick="document.getElementById('photo-input').click()">
+                            <span class="text-4xl mb-2 block">📷</span>
+                            <p class="text-gray-600">Click to upload photos or drag and drop</p>
+                            <input type="file" id="photo-input" multiple accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
+                        </div>
+                        <div id="photo-preview" class="mt-4 grid grid-cols-3 gap-4 hidden"></div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors">List Book</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Profile Tab -->
+        <div id="profile-tab" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Profile Info -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="text-center mb-6">
+                        <div class="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="text-indigo-600 text-2xl font-bold">U</span>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900">Your Profile</h3>
+                        <p class="text-gray-600">📧 Email Verification Pending</p>
+                        <div class="flex items-center justify-center space-x-1 mt-2">
+                            <span class="text-yellow-400">⭐</span>
+                            <span class="font-semibold">New User</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Books Sold</span>
+                            <span class="font-semibold" id="books-sold">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Books Bought</span>
+                            <span class="font-semibold" id="books-bought">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Member Since</span>
+                            <span class="font-semibold" id="member-since">Today</span>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full mt-6 bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">Edit Profile</button>
+                </div>
+
+                <!-- My Listings -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">My Listings</h3>
+                        
+                        <div id="user-listings" class="space-y-4">
+                            <div class="empty-state">
+                                <div class="text-4xl mb-4">📖</div>
+                                <h4 class="text-lg font-semibold text-gray-900 mb-2">No listings yet</h4>
+                                <p class="text-gray-600 mb-4">Start selling by listing your first book!</p>
+                                <button onclick="showTab('sell')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700">List a Book</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Chat Modal -->
+    <div id="chat-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="fixed right-4 top-20 bottom-4 w-80 bg-white rounded-lg shadow-xl flex flex-col">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">Messages</h3>
+                <button onclick="toggleChat()" class="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-4">
+                <div class="empty-state">
+                    <div class="text-4xl mb-4">💬</div>
+                    <p class="text-gray-600">No messages yet. Start a conversation by showing interest in a book!</p>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-gray-200">
+                <div class="flex space-x-2">
+                    <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <button onclick="sendMessage()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+            <div class="text-center">
+                <div class="text-4xl mb-4">✅</div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
+                <p id="success-message" class="text-gray-600 mb-4"></p>
+                <button onclick="closeSuccessModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Welcome to BookLoop</h2>
+                <p class="text-gray-600">Sign in to start buying and selling books</p>
+            </div>
+            
+            <!-- Login/Register Toggle -->
+            <div class="flex mb-6 bg-gray-100 rounded-lg p-1">
+                <button id="login-tab-btn" onclick="showAuthTab('login')" class="flex-1 py-2 px-4 rounded-md text-sm font-medium bg-white text-indigo-600 shadow-sm">Sign In</button>
+                <button id="register-tab-btn" onclick="showAuthTab('register')" class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900">Sign Up</button>
+            </div>
+            
+            <!-- Login Form -->
+            <div id="login-form" class="auth-form">
+                <form onsubmit="handleLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="login-email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="login-password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">Sign In</button>
+                </form>
+                
+                <div class="mt-4 text-center">
+                    <p class="text-sm text-gray-600">Demo accounts:</p>
+                    <div class="mt-2 space-y-1">
+                        <button onclick="quickLogin('john@demo.com', 'John Doe')" class="text-xs text-indigo-600 hover:text-indigo-800 block mx-auto">john@demo.com (John Doe)</button>
+                        <button onclick="quickLogin('sarah@demo.com', 'Sarah Wilson')" class="text-xs text-indigo-600 hover:text-indigo-800 block mx-auto">sarah@demo.com (Sarah Wilson)</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="register-form" class="auth-form hidden">
+                <form onsubmit="handleRegister(event)" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                            <input type="text" id="register-firstname" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                            <input type="text" id="register-lastname" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="register-email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="register-password" required minlength="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <p class="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                        <input type="password" id="register-confirm-password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">University/Location</label>
+                        <input type="text" id="register-location" required placeholder="e.g., Stanford University" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">Create Account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables to store app data
+        let books = [];
+        let userListings = [];
+        let messages = [];
+        let users = [
+            {
+                id: 1,
+                email: 'john@demo.com',
+                name: 'John Doe',
+                firstName: 'John',
+                lastName: 'Doe',
+                location: 'Stanford University',
+                booksSold: 12,
+                booksBought: 8,
+                memberSince: 'Jan 2024',
+                rating: 4.8,
+                reviews: 23,
+                verified: true
+            },
+            {
+                id: 2,
+                email: 'sarah@demo.com',
+                name: 'Sarah Wilson',
+                firstName: 'Sarah',
+                lastName: 'Wilson',
+                location: 'UC Berkeley',
+                booksSold: 7,
+                booksBought: 15,
+                memberSince: 'Feb 2024',
+                rating: 4.9,
+                reviews: 18,
+                verified: true
+            }
+        ];
+        let currentUser = null;
+        let isLoggedIn = false;
+
+        // Authentication functions
+        function showAuthTab(tabName) {
+            // Hide all auth forms
+            document.querySelectorAll('.auth-form').forEach(form => {
+                form.classList.add('hidden');
+            });
+            
+            // Show selected form
+            document.getElementById(tabName + '-form').classList.remove('hidden');
+            
+            // Update tab buttons
+            const loginBtn = document.getElementById('login-tab-btn');
+            const registerBtn = document.getElementById('register-tab-btn');
+            
+            if (tabName === 'login') {
+                loginBtn.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+                loginBtn.classList.remove('text-gray-600');
+                registerBtn.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+                registerBtn.classList.add('text-gray-600');
+            } else {
+                registerBtn.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+                registerBtn.classList.remove('text-gray-600');
+                loginBtn.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+                loginBtn.classList.add('text-gray-600');
+            }
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            // Find user by email
+            const user = users.find(u => u.email === email);
+            
+            if (user) {
+                // In a real app, you'd verify the password hash
+                loginUser(user);
+            } else {
+                showSuccessMessage('Invalid email or password. Try the demo accounts!');
+            }
+        }
+
+        function handleRegister(event) {
+            event.preventDefault();
+            const firstName = document.getElementById('register-firstname').value;
+            const lastName = document.getElementById('register-lastname').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+            const location = document.getElementById('register-location').value;
+            
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                showSuccessMessage('Passwords do not match!');
+                return;
+            }
+            
+            // Check if email already exists
+            if (users.find(u => u.email === email)) {
+                showSuccessMessage('An account with this email already exists!');
+                return;
+            }
+            
+            // Create new user
+            const newUser = {
+                id: users.length + 1,
+                email: email,
+                name: `${firstName} ${lastName}`,
+                firstName: firstName,
+                lastName: lastName,
+                location: location,
+                booksSold: 0,
+                booksBought: 0,
+                memberSince: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                rating: 0,
+                reviews: 0,
+                verified: false
+            };
+            
+            users.push(newUser);
+            loginUser(newUser);
+        }
+
+        function quickLogin(email, name) {
+            const user = users.find(u => u.email === email);
+            if (user) {
+                loginUser(user);
+            }
+        }
+
+        function loginUser(user) {
+            currentUser = user;
+            isLoggedIn = true;
+            
+            // Save login state to localStorage
+            localStorage.setItem('bookloop_user', JSON.stringify(user));
+            localStorage.setItem('bookloop_logged_in', 'true');
+            
+            // Hide login modal
+            document.getElementById('login-modal').classList.add('hidden');
+            
+            // Update UI
+            updateUserInterface();
+            
+            showSuccessMessage(`Welcome back, ${user.firstName}!`);
+        }
+
+        function logout() {
+            currentUser = null;
+            isLoggedIn = false;
+            
+            // Clear login state from localStorage
+            localStorage.removeItem('bookloop_user');
+            localStorage.removeItem('bookloop_logged_in');
+            localStorage.removeItem('bookloop_books');
+            localStorage.removeItem('bookloop_user_listings');
+            
+            // Show login modal
+            document.getElementById('login-modal').classList.remove('hidden');
+            
+            // Reset UI
+            resetUserInterface();
+        }
+
+        function updateUserInterface() {
+            // Update header user avatar
+            const avatar = document.querySelector('header .w-8.h-8 span');
+            avatar.textContent = currentUser.firstName.charAt(0);
+            
+            // Update profile tab
+            updateProfileDisplay();
+            
+            // Show main content
+            document.querySelector('main').classList.remove('hidden');
+        }
+
+        function resetUserInterface() {
+            // Reset to default state
+            books = [];
+            userListings = [];
+            renderBookFeed();
+            renderUserListings();
+            
+            // Hide main content
+            document.querySelector('main').classList.add('hidden');
+        }
+
+        function updateProfileDisplay() {
+            // Update profile info
+            document.querySelector('#profile-tab .text-xl.font-semibold').textContent = currentUser.name;
+            document.querySelector('#profile-tab .w-20.h-20 span').textContent = currentUser.firstName.charAt(0);
+            
+            // Update verification status
+            const verificationText = currentUser.verified ? '📧 Verified • 📱 Verified' : '📧 Email Verification Pending';
+            document.querySelector('#profile-tab .text-gray-600').textContent = verificationText;
+            
+            // Update rating
+            const ratingText = currentUser.reviews > 0 ? `${currentUser.rating} (${currentUser.reviews} reviews)` : 'New User';
+            document.querySelector('#profile-tab .font-semibold').nextSibling.textContent = ratingText;
+            
+            // Update stats
+            document.getElementById('books-sold').textContent = currentUser.booksSold;
+            document.getElementById('books-bought').textContent = currentUser.booksBought;
+            document.getElementById('member-since').textContent = currentUser.memberSince;
+        }
+
+        // Tab switching
+        function showTab(tabName) {
+            if (!isLoggedIn) {
+                showSuccessMessage('Please log in to access this feature!');
+                return;
+            }
+            
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.remove('hidden');
+            
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-indigo-600');
+                btn.classList.add('text-gray-700');
+            });
+            event.target.classList.remove('text-gray-700');
+            event.target.classList.add('text-indigo-600');
+        }
+
+        // Chat functionality
+        function toggleChat() {
+            const modal = document.getElementById('chat-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (message) {
+                // Add message to chat (simplified for demo)
+                input.value = '';
+                showSuccessMessage('Message sent!');
+            }
+        }
+
+        // Book listing functionality
+        function listBook(event) {
+            event.preventDefault();
+            
+            const bookData = {
+                id: Date.now(),
+                title: document.getElementById('book-title').value,
+                author: document.getElementById('book-author').value,
+                genre: document.getElementById('book-genre').value,
+                condition: document.getElementById('book-condition').value,
+                price: parseFloat(document.getElementById('book-price').value),
+                location: document.getElementById('pickup-location').value,
+                description: document.getElementById('book-description').value,
+                dateAdded: new Date(),
+                seller: currentUser.name,
+                sellerId: currentUser.id
+            };
+            
+            // Add to books array and user listings
+            books.push(bookData);
+            userListings.push(bookData);
+            
+            // Save to localStorage
+            localStorage.setItem('bookloop_books', JSON.stringify(books));
+            localStorage.setItem('bookloop_user_listings', JSON.stringify(userListings));
+            
+            // Update displays
+            renderBookFeed();
+            renderUserListings();
+            
+            // Reset form
+            event.target.reset();
+            document.getElementById('photo-preview').classList.add('hidden');
+            
+            showSuccessMessage('Your book has been listed successfully!');
+        }
+
+        // Photo upload handling
+        function handlePhotoUpload(event) {
+            const files = event.target.files;
+            const preview = document.getElementById('photo-preview');
+            
+            if (files.length > 0) {
+                preview.classList.remove('hidden');
+                preview.innerHTML = '';
+                
+                Array.from(files).slice(0, 6).forEach(file => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-gray-200 rounded-lg p-4 text-center';
+                    div.innerHTML = `<span class="text-2xl">📷</span><p class="text-xs mt-1">${file.name}</p>`;
+                    preview.appendChild(div);
+                });
+            }
+        }
+
+        // Render book feed
+        function renderBookFeed() {
+            const feed = document.getElementById('book-feed');
+            
+            if (books.length === 0) {
+                feed.innerHTML = `
+                    <div class="col-span-full empty-state">
+                        <div class="text-6xl mb-4">📚</div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">No books listed yet</h3>
+                        <p class="text-gray-600 mb-4">Be the first to list a book and start the BookLoop community!</p>
+                        <button onclick="showTab('sell')" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">List Your First Book</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            feed.innerHTML = books.map(book => createBookCard(book)).join('');
+        }
+
+        // Create book card HTML
+        function createBookCard(book) {
+            const conditionColors = {
+                'new': 'bg-blue-100 text-blue-800',
+                'slightly-used': 'bg-green-100 text-green-800',
+                'well-read': 'bg-yellow-100 text-yellow-800'
+            };
+            
+            const genreEmojis = {
+                'fiction': '📖',
+                'non-fiction': '📚',
+                'science': '🔬',
+                'history': '📜',
+                'romance': '💕',
+                'mystery': '🔍'
+            };
+            
+            return `
+                <div class="book-card bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="h-48 bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
+                        <span class="text-white text-4xl">${genreEmojis[book.genre] || '📖'}</span>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-gray-900 mb-1">${book.title}</h3>
+                        <p class="text-sm text-gray-600 mb-2">${book.author} • ${book.genre}</p>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-lg font-bold text-indigo-600">$${book.price}</span>
+                            <span class="text-sm ${conditionColors[book.condition]} px-2 py-1 rounded">${book.condition.replace('-', ' ')}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-1">
+                                <span class="text-yellow-400">⭐</span>
+                                <span class="text-sm text-gray-600">New Listing</span>
+                            </div>
+                            <button onclick="showInterest('${book.title}')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">Interested</button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">📍 ${book.location}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show interest in a book
+        function showInterest(bookTitle) {
+            showSuccessMessage(`Great! Your interest in "${bookTitle}" has been sent to the seller.`);
+        }
+
+        // Render user listings
+        function renderUserListings() {
+            const container = document.getElementById('user-listings');
+            
+            if (userListings.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="text-4xl mb-4">📖</div>
+                        <h4 class="text-lg font-semibold text-gray-900 mb-2">No listings yet</h4>
+                        <p class="text-gray-600 mb-4">Start selling by listing your first book!</p>
+                        <button onclick="showTab('sell')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700">List a Book</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = userListings.map(book => `
+                <div class="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
+                    <div class="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-lg flex items-center justify-center">
+                        <span class="text-white text-xl">📖</span>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-gray-900">${book.title}</h4>
+                        <p class="text-sm text-gray-600">Listed ${book.dateAdded.toLocaleDateString()} • $${book.price}</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="editListing(${book.id})" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Edit</button>
+                        <button onclick="removeListing(${book.id})" class="text-red-600 hover:text-red-800 text-sm font-medium">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Search functionality
+        function searchBooks() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const genre = document.getElementById('genre-filter').value;
+            const condition = document.getElementById('condition-filter').value;
+            const minPrice = parseFloat(document.getElementById('min-price').value) || 0;
+            const maxPrice = parseFloat(document.getElementById('max-price').value) || Infinity;
+            
+            let filteredBooks = books.filter(book => {
+                const matchesQuery = book.title.toLowerCase().includes(query) || 
+                                   book.author.toLowerCase().includes(query);
+                const matchesGenre = !genre || book.genre === genre;
+                const matchesCondition = !condition || book.condition === condition;
+                const matchesPrice = book.price >= minPrice && book.price <= maxPrice;
+                
+                return matchesQuery && matchesGenre && matchesCondition && matchesPrice;
+            });
+            
+            const resultsContainer = document.getElementById('search-results');
+            
+            if (filteredBooks.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="col-span-full empty-state">
+                        <div class="text-6xl mb-4">🔍</div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">No books found</h3>
+                        <p class="text-gray-600">Try adjusting your search criteria or browse all available books.</p>
+                    </div>
+                `;
+            } else {
+                resultsContainer.innerHTML = filteredBooks.map(book => createBookCard(book)).join('');
+            }
+        }
+
+        // Sort books
+        function sortBooks(type) {
+            // Update active filter
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.remove('bg-indigo-600', 'text-white');
+                chip.classList.add('bg-white', 'border', 'border-gray-300', 'text-gray-700');
+            });
+            event.target.classList.remove('bg-white', 'border', 'border-gray-300', 'text-gray-700');
+            event.target.classList.add('bg-indigo-600', 'text-white');
+            
+            // Sort books array
+            switch(type) {
+                case 'newest':
+                    books.sort((a, b) => b.dateAdded - a.dateAdded);
+                    break;
+                case 'price':
+                    books.sort((a, b) => a.price - b.price);
+                    break;
+                case 'nearby':
+                    // For demo purposes, just shuffle the array
+                    books.sort(() => Math.random() - 0.5);
+                    break;
+            }
+            
+            renderBookFeed();
+            showSuccessMessage(`Books sorted by ${type}!`);
+        }
+
+        // Listing management
+        function editListing(id) {
+            showSuccessMessage('Edit functionality would open here!');
+        }
+
+        function removeListing(id) {
+            userListings = userListings.filter(book => book.id !== id);
+            books = books.filter(book => book.id !== id);
+            
+            // Update localStorage
+            localStorage.setItem('bookloop_books', JSON.stringify(books));
+            localStorage.setItem('bookloop_user_listings', JSON.stringify(userListings));
+            
+            renderUserListings();
+            renderBookFeed();
+            showSuccessMessage('Listing removed successfully!');
+        }
+
+        // Utility functions
+        function showSuccessMessage(message) {
+            document.getElementById('success-message').textContent = message;
+            document.getElementById('success-modal').classList.remove('hidden');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('success-modal').classList.add('hidden');
+        }
+
+        // Check for saved login on startup
+        function checkSavedLogin() {
+            const savedUser = localStorage.getItem('bookloop_user');
+            const savedLoginState = localStorage.getItem('bookloop_logged_in');
+            
+            if (savedUser && savedLoginState === 'true') {
+                // Restore user session
+                currentUser = JSON.parse(savedUser);
+                isLoggedIn = true;
+                
+                // Restore saved data
+                const savedBooks = localStorage.getItem('bookloop_books');
+                const savedUserListings = localStorage.getItem('bookloop_user_listings');
+                
+                if (savedBooks) {
+                    books = JSON.parse(savedBooks);
+                }
+                if (savedUserListings) {
+                    userListings = JSON.parse(savedUserListings);
+                }
+                
+                // Update UI for logged in user
+                updateUserInterface();
+                showTab('home');
+                
+                // Hide login modal
+                document.getElementById('login-modal').classList.add('hidden');
+                
+                return true;
+            }
+            return false;
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is already logged in
+            if (!checkSavedLogin()) {
+                // Show login modal if not logged in
+                document.getElementById('login-modal').classList.remove('hidden');
+            }
+            
+            // Initialize empty states
+            renderBookFeed();
+            renderUserListings();
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96a722cd65bc8b03',t:'MTc1NDQwNTczMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
