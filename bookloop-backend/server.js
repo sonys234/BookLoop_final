@@ -23,6 +23,10 @@ app.use('/api/auth', authRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/auth", require("./routes/auth"));
 
+const messagesRoutes = require('./routes/messages');
+app.use('/api', messagesRoutes);
+
+
 //app.use("/uploads", express.static("uploads"));
 
 const PORT = process.env.PORT || 5000;
