@@ -550,6 +550,235 @@ async function handleEditProfile() {
   }
 }
 
+//===================
+// messages
+//===================
+// =========================
+// CHAT & MESSAGES MODULE
+// =========================
+
+// // Dummy data for logged-in user
+// let currentUser = { username: "You" };
+
+// Store conversations
+let conversations = [];
+let currentChatId = null;
+
+
+// Toggle widget
+function toggleChat() {
+    document.getElementById('messages-widget').classList.toggle('hidden');
+}
+
+// Open chat inside the same widget
+function openChatRoom(convId) {
+    const conv = conversations.find(c => c.id === convId);
+    if (!conv) return;
+
+    currentChatId = convId;
+
+    // Hide conversations list, show chat view
+    document.getElementById('conversations-list').classList.add('hidden');
+    document.getElementById('chat-room-view').classList.remove('hidden');
+
+    // Set chat header
+    document.getElementById('chat-header-name').textContent = conv.sellerName;
+
+    // Render messages
+    renderChatMessages(conv);
+}
+
+// Go back to conversations list
+function goBack() {
+    document.getElementById('chat-room-view').classList.add('hidden');
+    document.getElementById('conversations-list').classList.remove('hidden');
+    currentChatId = null;
+}
+
+// Render messages
+function renderChatMessages(conv) {
+    const container = document.getElementById('chat-messages-container');
+    container.innerHTML = '';
+    conv.messages.forEach(m => {
+        const div = document.createElement('div');
+        div.className = m.sender === 'user' ? 'text-right text-blue-600' : 'text-left text-gray-800';
+        div.textContent = m.message;
+        container.appendChild(div);
+    });
+    container.scrollTop = container.scrollHeight;
+}
+
+// Send message
+function sendChatMessage() {
+    const input = document.getElementById('chat-input-field');
+    const msg = input.value.trim();
+    if (!msg || currentChatId === null) return;
+
+    const conv = conversations.find(c => c.id === currentChatId);
+    if (!conv) return;
+
+    conv.messages.push({ sender: 'user', message: msg });
+    renderChatMessages(conv);
+    input.value = '';
+
+    // Simulate seller reply
+    setTimeout(() => {
+        conv.messages.push({ sender: 'seller', message: "Thanks for your interest!" });
+        renderChatMessages(conv);
+    }, 1000);
+}
+
+
+// Toggle main chat widget
+function toggleChat() {
+  
+    const widget = document.getElementById('messages-widget');
+    widget.classList.toggle('hidden');
+}
+
+// Open a chat room for a specific conversation
+function openChatRoom(conversationId) {
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (!conversation) return;
+
+    currentChatId = conversationId;
+
+    document.getElementById('chat-partner-name').textContent = conversation.sellerName;
+    document.getElementById('chat-partner-initial').textContent = conversation.sellerInitial;
+    document.getElementById('chat-book-title').textContent = conversation.bookTitle;
+
+    loadChatMessages(conversation);
+    document.getElementById('chat-room-modal').classList.remove('hidden');
+}
+
+// Close chat room
+function closeChatRoom() {
+    document.getElementById('chat-room-modal').classList.add('hidden');
+    currentChatId = null;
+}
+
+// Load chat messages into modal
+function loadChatMessages(conversation) {
+    const messagesContainer = document.getElementById('chat-messages');
+    messagesContainer.innerHTML = '';
+
+    conversation.messages.forEach(msg => addChatMessage(msg.message, msg.sender, msg.timestamp));
+}
+
+// Add a single message to chat modal
+function addChatMessage(message, sender, timestamp) {
+    const container = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+
+    if (sender === 'user') {
+        div.className = 'flex justify-end chat-bubble';
+        div.innerHTML = `
+            <div class="max-w-xs">
+                <div class="bg-indigo-600 text-white p-2 rounded-lg text-sm">${message}</div>
+                <p class="text-xs text-gray-500 text-right mt-1">You • ${timestamp}</p>
+            </div>
+        `;
+    } else {
+        div.className = 'flex items-start space-x-2 chat-bubble';
+        div.innerHTML = `
+            <div class="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-indigo-600 text-xs font-semibold">S</span>
+            </div>
+            <div class="max-w-xs">
+                <div class="bg-gray-100 p-2 rounded-lg text-sm">${message}</div>
+                <p class="text-xs text-gray-500 mt-1">Seller • ${timestamp}</p>
+            </div>
+        `;
+    }
+
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+// Send a new message
+function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (!msg || currentChatId === null) return;
+
+    const conversation = conversations.find(c => c.id === currentChatId);
+    if (!conversation) return;
+
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    conversation.messages.push({ sender: 'user', message: msg, timestamp });
+    addChatMessage(msg, 'user', timestamp);
+
+    input.value = '';
+
+    // Simulate seller response after 1s
+    setTimeout(() => {
+        const response = "Thanks for your interest! Let's discuss.";
+        const respTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        conversation.messages.push({ sender: 'seller', message: response, timestamp: respTime });
+        addChatMessage(response, 'seller', respTime);
+        updateConversationsList();
+    }, 1000);
+}
+
+// Update conversations list in widget
+function updateConversationsList() {
+    const list = document.getElementById('conversations-list');
+
+    if (conversations.length === 0) {
+        list.innerHTML = `
+            <div class="p-6 text-center text-gray-500">
+                <div class="text-4xl mb-2">💬</div>
+                <p class="text-sm">No conversations yet</p>
+                <p class="text-xs mt-1">Request a book to start chatting with sellers</p>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = conversations.map(conv => {
+        const lastMsg = conv.messages[conv.messages.length - 1];
+        return `
+            <div onclick="openChatRoom(${conv.id})" class="p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer flex items-center space-x-3">
+                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <span class="text-indigo-600 font-semibold text-sm">${conv.sellerInitial}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-medium text-gray-900 truncate">${conv.sellerName}</h4>
+                        <span class="text-xs text-gray-500">${lastMsg.timestamp}</span>
+                    </div>
+                    <p class="text-xs text-gray-500 truncate">${lastMsg.message}</p>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Simulate showing interest in a book (creates conversation)
+function showInterest(bookTitle = "Sample Book", sellerName = "Seller") {
+    const conv = {
+        id: Date.now(),
+        bookTitle,
+        sellerName,
+        sellerInitial: sellerName.charAt(0).toUpperCase(),
+        messages: [
+            { sender: 'seller', message: `Hi! This is ${sellerName}, seller of "${bookTitle}". How can I help?`, timestamp: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }
+        ]
+    };
+    conversations.push(conv);
+    updateConversationsList();
+    openChatRoom(conv.id);
+}
+
+// Initialize on page load
+window.addEventListener('DOMContentLoaded', () => {
+    updateConversationsList();
+
+    // Optional: auto-create a demo conversation
+    // showInterest("Intro to JS", "Alice");
+});
+
 
 // =========================
 // PROFILE EDIT FORM HANDLER

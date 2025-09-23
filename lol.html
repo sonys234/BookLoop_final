@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookLoop - Buy & Sell Books</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chat-bubble {
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .book-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .book-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .filter-chip {
+            transition: all 0.2s ease;
+        }
+        .filter-chip:hover {
+            transform: scale(1.05);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-indigo-600">📚 BookLoop</h1>
+                    <nav class="hidden md:flex space-x-6">
+                        <button onclick="showTab('home')" class="nav-btn text-gray-700 hover:text-indigo-600 font-medium">Home</button>
+                        <button onclick="showTab('buy')" class="nav-btn text-gray-700 hover:text-indigo-600 font-medium">Buy</button>
+                        <button onclick="showTab('sell')" class="nav-btn text-gray-700 hover:text-indigo-600 font-medium">Sell</button>
+                        <button onclick="showTab('profile')" class="nav-btn text-gray-700 hover:text-indigo-600 font-medium">Profile</button>
+                    </nav>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleMessages()" class="relative p-2 text-gray-600 hover:text-indigo-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
+                        <span id="message-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                    </button>
+                    <div class="relative group">
+                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center cursor-pointer">
+                            <span class="text-indigo-600 font-semibold">U</span>
+                        </div>
+                        <!-- Dropdown Menu -->
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="py-2">
+                                <button onclick="showTab('profile')" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">View Profile</button>
+                                <button onclick="logout()" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Sign Out</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        <!-- Home Tab -->
+        <div id="home-tab" class="tab-content">
+            <!-- Sort Options -->
+            <div class="flex flex-wrap gap-3 mb-6">
+                <button onclick="sortBooks('newest')" class="filter-chip bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium">Newest</button>
+                <button onclick="sortBooks('price')" class="filter-chip bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-300">Price: Low to High</button>
+                <button onclick="sortBooks('rating')" class="filter-chip bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-300">Highest Rated</button>
+                <button onclick="filterByCategory('fiction')" class="filter-chip bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-300">Fiction</button>
+                <button onclick="filterByCategory('textbook')" class="filter-chip bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-300">Textbooks</button>
+            </div>
+
+            <!-- Books Grid -->
+            <div id="books-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div class="col-span-full flex justify-center">
+                    <div class="empty-state">
+                        <div class="text-6xl mb-4">📚</div>
+                        <h3 class="text-xl font-semibold mb-2">No Books Available</h3>
+                        <p>Books will appear here once they are listed for sale</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buy Tab -->
+        <div id="buy-tab" class="tab-content hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">Browse Books</h2>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input type="text" id="search-input" placeholder="Search books, authors, ISBN..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <button onclick="searchBooks()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors">Search</button>
+                </div>
+            </div>
+            <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Search results will appear here -->
+                <div class="empty-state">
+                    <div class="text-6xl mb-4">🔍</div>
+                    <h3 class="text-xl font-semibold mb-2">Search for Books</h3>
+                    <p>Use the search bar above to find books you want to buy</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sell Tab -->
+        <div id="sell-tab" class="tab-content hidden">
+            <div class="max-w-2xl mx-auto">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Sell Your Books</h2>
+                <form id="sell-form" class="bg-white rounded-lg shadow-md p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Book Title</label>
+                            <input type="text" id="book-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Author</label>
+                            <input type="text" id="book-author" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">ISBN (Optional)</label>
+                            <input type="text" id="book-isbn" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Price ($)</label>
+                            <input type="number" id="book-price" step="0.01" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Condition</label>
+                            <select id="book-condition" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                                <option value="">Select condition</option>
+                                <option value="new">New</option>
+                                <option value="like-new">Like New</option>
+                                <option value="good">Good</option>
+                                <option value="fair">Fair</option>
+                                <option value="poor">Poor</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                            <select id="book-category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                                <option value="">Select category</option>
+                                <option value="fiction">Fiction</option>
+                                <option value="non-fiction">Non-Fiction</option>
+                                <option value="textbook">Textbook</option>
+                                <option value="reference">Reference</option>
+                                <option value="children">Children's Books</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="book-description" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Describe the book's condition, any highlights, missing pages, etc."></textarea>
+                    </div>
+                    <div class="mt-6">
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium">List Book for Sale</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Profile Tab -->
+        <div id="profile-tab" class="tab-content hidden">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <span class="text-indigo-600 font-bold text-xl">U</span>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">User Profile</h2>
+                            <p class="text-gray-600">Member since January 2024</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-indigo-600">0</div>
+                            <div class="text-sm text-gray-600">Books Sold</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-indigo-600">0</div>
+                            <div class="text-sm text-gray-600">Books Bought</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-indigo-600">-</div>
+                            <div class="text-sm text-gray-600">Rating</div>
+                        </div>
+                    </div>
+                    <button onclick="openEditProfile()" class="w-full mt-6 bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">Edit Profile</button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- My Listings -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">My Listings</h3>
+                        <div id="my-listings">
+                            <div class="empty-state">
+                                <div class="text-4xl mb-2">📖</div>
+                                <p class="text-sm">No books listed yet</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Purchase History -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Purchase History</h3>
+                        <div class="empty-state">
+                            <div class="text-4xl mb-2">🛒</div>
+                            <p class="text-sm">No purchases yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+                <h3 class="font-semibold">Edit Profile</h3>
+                <button onclick="closeEditProfile()" class="text-white hover:text-gray-200">✕</button>
+            </div>
+            <form id="edit-profile-form" class="p-6">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                        <input type="text" id="edit-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" id="edit-email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                        <input type="tel" id="edit-phone" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                        <input type="text" id="edit-location" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="City, State">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                        <textarea id="edit-bio" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Tell others about yourself..."></textarea>
+                    </div>
+                </div>
+                <div class="flex space-x-3 mt-6">
+                    <button type="button" onclick="closeEditProfile()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Messages Widget -->
+    <div id="messages-widget" class="fixed bottom-4 right-4 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 hidden z-50">
+        <!-- Messages Header -->
+        <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                <div>
+                    <h3 class="font-semibold text-sm">Messages</h3>
+                    <p class="text-xs text-indigo-100">Your conversations</p>
+                </div>
+            </div>
+            <button onclick="toggleMessages()" class="text-white hover:text-gray-200 p-1">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Conversations List -->
+        <div id="conversations-list" class="h-80 overflow-y-auto bg-gray-50">
+            <div class="p-6 text-center text-gray-500">
+                <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                <p class="text-sm">No conversations yet</p>
+                <p class="text-xs text-gray-400 mt-1">Request a book to start chatting with sellers</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Room Modal -->
+    <div id="chat-room-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 h-96">
+            <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
+                        <span id="chat-partner-initial" class="text-white font-semibold text-sm">S</span>
+                    </div>
+                    <div>
+                        <h3 id="chat-partner-name" class="font-semibold text-sm">Seller</h3>
+                        <p id="chat-book-title" class="text-xs text-indigo-100">Book Title</p>
+                    </div>
+                </div>
+                <button onclick="closeChatRoom()" class="text-white hover:text-gray-200 p-1">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Chat Messages -->
+            <div id="chat-messages" class="h-64 overflow-y-auto p-4 bg-gray-50 space-y-3">
+                <!-- Messages will appear here -->
+            </div>
+            
+            <!-- Chat Input -->
+            <div class="p-4 border-t border-gray-200 bg-white rounded-b-lg">
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-full text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50">
+                    <button onclick="sendMessage()" class="bg-indigo-600 text-white p-2 rounded-full hover:bg-indigo-700 transition-colors">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentTab = 'home';
+        let books = [
+            {
+                id: 1,
+                title: "The Great Gatsby",
+                author: "F. Scott Fitzgerald",
+                price: 12.99,
+                rating: 4.5,
+                category: "fiction",
+                condition: "good"
+            }
+        ];
+        
+        // User profile data
+        let userProfile = {
+            name: "John Doe",
+            email: "john.doe@email.com",
+            phone: "+1 (555) 123-4567",
+            location: "New York, NY",
+            bio: "Book lover and avid reader. Always looking for great deals on classic literature!"
+        };
+
+        // Conversations and messaging
+        let conversations = [];
+        let currentChatId = null;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            showTab('home');
+            renderBooks(books);
+            updateMyListings();
+            
+            // Form submission
+            document.getElementById('sell-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleSellForm();
+            });
+
+            // Edit profile form submission
+            document.getElementById('edit-profile-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleEditProfile();
+            });
+
+            // Chat input enter key
+            document.getElementById('chat-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // Search input enter key
+            document.getElementById('search-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchBooks();
+                }
+            });
+        });
+
+        // Tab navigation
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.remove('hidden');
+            
+            // Update navigation
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-indigo-600');
+                btn.classList.add('text-gray-700');
+            });
+            
+            // Highlight active nav
+            event.target.classList.remove('text-gray-700');
+            event.target.classList.add('text-indigo-600');
+            
+            currentTab = tabName;
+        }
+
+        // Book sorting and filtering
+        function sortBooks(criteria) {
+            let sortedBooks = [...books];
+            
+            switch(criteria) {
+                case 'newest':
+                    // For demo, just reverse the array
+                    sortedBooks.reverse();
+                    break;
+                case 'price':
+                    sortedBooks.sort((a, b) => a.price - b.price);
+                    break;
+                case 'rating':
+                    sortedBooks.sort((a, b) => b.rating - a.rating);
+                    break;
+            }
+            
+            updateFilterButtons(event.target);
+            renderBooks(sortedBooks);
+        }
+
+        function filterByCategory(category) {
+            const filteredBooks = books.filter(book => book.category === category);
+            updateFilterButtons(event.target);
+            renderBooks(filteredBooks);
+        }
+
+        function updateFilterButtons(activeButton) {
+            document.querySelectorAll('.filter-chip').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            
+            activeButton.classList.remove('bg-gray-200', 'text-gray-700');
+            activeButton.classList.add('bg-indigo-600', 'text-white');
+        }
+
+        function renderBooks(booksToRender) {
+            const grid = document.getElementById('books-grid');
+            const colors = ['from-blue-400 to-purple-500', 'from-green-400 to-blue-500', 'from-red-400 to-pink-500', 'from-yellow-400 to-orange-500'];
+            const icons = ['📖', '📚', '📘', '📙'];
+            
+            grid.innerHTML = booksToRender.map((book, index) => `
+                <div class="book-card bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="h-48 bg-gradient-to-br ${colors[index % colors.length]} flex items-center justify-center">
+                        <span class="text-white text-4xl">${icons[index % icons.length]}</span>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-gray-900 mb-1">${book.title}</h3>
+                        <p class="text-sm text-gray-600 mb-2">${book.author}</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-bold text-indigo-600">$${book.price}</span>
+                            <div class="flex items-center">
+                                <span class="text-yellow-400">⭐</span>
+                                <span class="text-sm text-gray-600 ml-1">${book.rating}</span>
+                            </div>
+                        </div>
+                        <button onclick="requestBook(${book.id})" class="w-full mt-3 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors">Request to Buy</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Search functionality
+        function searchBooks() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            if (!query.trim()) {
+                document.getElementById('search-results').innerHTML = `
+                    <div class="empty-state">
+                        <div class="text-6xl mb-4">🔍</div>
+                        <h3 class="text-xl font-semibold mb-2">Search for Books</h3>
+                        <p>Use the search bar above to find books you want to buy</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const results = books.filter(book => 
+                book.title.toLowerCase().includes(query) || 
+                book.author.toLowerCase().includes(query)
+            );
+            
+            if (results.length === 0) {
+                document.getElementById('search-results').innerHTML = `
+                    <div class="empty-state">
+                        <div class="text-6xl mb-4">📚</div>
+                        <h3 class="text-xl font-semibold mb-2">No Results Found</h3>
+                        <p>Try searching with different keywords</p>
+                    </div>
+                `;
+            } else {
+                renderSearchResults(results);
+            }
+        }
+
+        function renderSearchResults(results) {
+            const container = document.getElementById('search-results');
+            const colors = ['from-blue-400 to-purple-500', 'from-green-400 to-blue-500', 'from-red-400 to-pink-500', 'from-yellow-400 to-orange-500'];
+            const icons = ['📖', '📚', '📘', '📙'];
+            
+            container.innerHTML = results.map((book, index) => `
+                <div class="book-card bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="h-48 bg-gradient-to-br ${colors[index % colors.length]} flex items-center justify-center">
+                        <span class="text-white text-4xl">${icons[index % icons.length]}</span>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-gray-900 mb-1">${book.title}</h3>
+                        <p class="text-sm text-gray-600 mb-2">${book.author}</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-bold text-indigo-600">$${book.price}</span>
+                            <div class="flex items-center">
+                                <span class="text-yellow-400">⭐</span>
+                                <span class="text-sm text-gray-600 ml-1">${book.rating}</span>
+                            </div>
+                        </div>
+                        <button onclick="requestBook(${book.id})" class="w-full mt-3 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors">Request to Buy</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Sell form handling
+        function handleSellForm() {
+            const formData = {
+                title: document.getElementById('book-title').value,
+                author: document.getElementById('book-author').value,
+                isbn: document.getElementById('book-isbn').value,
+                price: parseFloat(document.getElementById('book-price').value),
+                condition: document.getElementById('book-condition').value,
+                category: document.getElementById('book-category').value,
+                description: document.getElementById('book-description').value
+            };
+            
+            // Add to books array
+            const newBook = {
+                id: books.length + 1,
+                title: formData.title,
+                author: formData.author,
+                price: formData.price,
+                rating: 0,
+                category: formData.category,
+                condition: formData.condition
+            };
+            
+            books.push(newBook);
+            
+            // Show success message
+            alert('Book listed successfully! 📚');
+            
+            // Reset form
+            document.getElementById('sell-form').reset();
+            
+            // Switch to home tab to see the new listing
+            showTab('home');
+            renderBooks(books);
+            updateMyListings();
+        }
+
+        // Update my listings in profile
+        function updateMyListings() {
+            const listingsContainer = document.getElementById('my-listings');
+            
+            if (books.length === 0) {
+                listingsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="text-4xl mb-2">📖</div>
+                        <p class="text-sm">No books listed yet</p>
+                    </div>
+                `;
+            } else {
+                listingsContainer.innerHTML = books.map(book => `
+                    <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg mb-3">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded flex items-center justify-center">
+                            <span class="text-white text-lg">📖</span>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-medium text-gray-900">${book.title}</h4>
+                            <p class="text-sm text-gray-600">$${book.price} • ${book.condition} condition</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-600 text-sm font-medium">Active</span>
+                            <button onclick="deleteListing(${book.id})" class="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors" title="Delete listing">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Delete listing function
+        function deleteListing(bookId) {
+            const book = books.find(b => b.id === bookId);
+            if (book && confirm(`Are you sure you want to delete "${book.title}" from your listings?`)) {
+                // Remove from books array
+                books = books.filter(b => b.id !== bookId);
+                
+                // Update displays
+                renderBooks(books);
+                updateMyListings();
+                
+                alert('Listing deleted successfully! 🗑️');
+            }
+        }
+
+        // Book request functionality
+        function requestBook(bookId) {
+            const book = books.find(b => b.id === bookId);
+            if (book) {
+                // Simulate seller accepting the request
+                if (confirm(`📖 Request "${book.title}" by ${book.author} for $${book.price}?\n\nThis will send a request to the seller.`)) {
+                    // Create a new conversation
+                    const conversationId = Date.now();
+                    const conversation = {
+                        id: conversationId,
+                        bookId: book.id,
+                        bookTitle: book.title,
+                        sellerName: "Book Seller",
+                        sellerInitial: "S",
+                        messages: [
+                            {
+                                sender: 'seller',
+                                message: `Hi! I see you're interested in "${book.title}". It's in ${book.condition} condition and priced at $${book.price}. Would you like to know more about it?`,
+                                timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                            }
+                        ]
+                    };
+                    
+                    conversations.push(conversation);
+                    updateConversationsList();
+                    
+                    // Show success message
+                    alert('Request sent! The seller has accepted and started a chat with you. Check your messages! 💬');
+                    
+                    // Update message badge
+                    updateMessageBadge();
+                }
+            }
+        }
+
+        // Messages functionality
+        function toggleMessages() {
+            const messagesWidget = document.getElementById('messages-widget');
+            messagesWidget.classList.toggle('hidden');
+        }
+
+        function updateConversationsList() {
+            const conversationsList = document.getElementById('conversations-list');
+            
+            if (conversations.length === 0) {
+                conversationsList.innerHTML = `
+                    <div class="p-6 text-center text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/>
+                        </svg>
+                        <p class="text-sm">No conversations yet</p>
+                        <p class="text-xs text-gray-400 mt-1">Request a book to start chatting with sellers</p>
+                    </div>
+                `;
+            } else {
+                conversationsList.innerHTML = conversations.map(conv => {
+                    const lastMessage = conv.messages[conv.messages.length - 1];
+                    return `
+                        <div onclick="openChatRoom(${conv.id})" class="p-4 border-b border-gray-200 hover:bg-gray-100 cursor-pointer">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                    <span class="text-indigo-600 font-semibold text-sm">${conv.sellerInitial}</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-medium text-gray-900 truncate">${conv.sellerName}</h4>
+                                        <span class="text-xs text-gray-500">${lastMessage.timestamp}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 truncate">${conv.bookTitle}</p>
+                                    <p class="text-xs text-gray-500 truncate">${lastMessage.message}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function openChatRoom(conversationId) {
+            const conversation = conversations.find(c => c.id === conversationId);
+            if (!conversation) return;
+            
+            currentChatId = conversationId;
+            
+            // Update chat room header
+            document.getElementById('chat-partner-name').textContent = conversation.sellerName;
+            document.getElementById('chat-partner-initial').textContent = conversation.sellerInitial;
+            document.getElementById('chat-book-title').textContent = conversation.bookTitle;
+            
+            // Load messages
+            loadChatMessages(conversation);
+            
+            // Show chat room modal
+            document.getElementById('chat-room-modal').classList.remove('hidden');
+            document.getElementById('messages-widget').classList.add('hidden');
+            
+            // Focus input
+            setTimeout(() => {
+                document.getElementById('chat-input').focus();
+            }, 100);
+        }
+
+        function closeChatRoom() {
+            document.getElementById('chat-room-modal').classList.add('hidden');
+            currentChatId = null;
+        }
+
+        function loadChatMessages(conversation) {
+            const messagesContainer = document.getElementById('chat-messages');
+            messagesContainer.innerHTML = '';
+            
+            conversation.messages.forEach(msg => {
+                addChatMessage(msg.message, msg.sender, msg.timestamp);
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (!message || !currentChatId) return;
+            
+            const conversation = conversations.find(c => c.id === currentChatId);
+            if (!conversation) return;
+            
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            // Add user message
+            conversation.messages.push({
+                sender: 'user',
+                message: message,
+                timestamp: timestamp
+            });
+            
+            addChatMessage(message, 'user', timestamp);
+            input.value = '';
+            
+            // Simulate seller response
+            setTimeout(() => {
+                const responses = [
+                    "Thanks for your interest! When would you like to meet?",
+                    "The book is still available. Are you ready to purchase?",
+                    "I can meet you on campus or we can arrange delivery.",
+                    "Let me know if you have any other questions about the book!"
+                ];
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                const responseTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                conversation.messages.push({
+                    sender: 'seller',
+                    message: randomResponse,
+                    timestamp: responseTime
+                });
+                
+                addChatMessage(randomResponse, 'seller', responseTime);
+                updateConversationsList();
+            }, 1000);
+        }
+
+        function addChatMessage(message, sender, timestamp) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            
+            if (sender === 'user') {
+                // User message (right side)
+                messageDiv.className = 'flex justify-end chat-bubble';
+                messageDiv.innerHTML = `
+                    <div class="max-w-xs">
+                        <div class="bg-indigo-600 text-white p-3 rounded-lg shadow-sm">
+                            <p class="text-sm">${message}</p>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1 text-right">You • ${timestamp}</p>
+                    </div>
+                `;
+            } else {
+                // Seller message (left side)
+                messageDiv.className = 'flex items-start space-x-2 chat-bubble';
+                messageDiv.innerHTML = `
+                    <div class="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span class="text-indigo-600 text-xs font-semibold">S</span>
+                    </div>
+                    <div class="max-w-xs">
+                        <div class="bg-white p-3 rounded-lg shadow-sm border">
+                            <p class="text-sm text-gray-800">${message}</p>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Seller • ${timestamp}</p>
+                    </div>
+                `;
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function updateMessageBadge() {
+            const badge = document.getElementById('message-badge');
+            if (conversations.length > 0) {
+                badge.textContent = conversations.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // Profile management functions
+        function openEditProfile() {
+            // Populate form with current profile data
+            document.getElementById('edit-name').value = userProfile.name;
+            document.getElementById('edit-email').value = userProfile.email;
+            document.getElementById('edit-phone').value = userProfile.phone;
+            document.getElementById('edit-location').value = userProfile.location;
+            document.getElementById('edit-bio').value = userProfile.bio;
+            
+            // Show modal
+            document.getElementById('edit-profile-modal').classList.remove('hidden');
+        }
+
+        function closeEditProfile() {
+            document.getElementById('edit-profile-modal').classList.add('hidden');
+        }
+
+        function handleEditProfile() {
+            // Update profile data
+            userProfile.name = document.getElementById('edit-name').value;
+            userProfile.email = document.getElementById('edit-email').value;
+            userProfile.phone = document.getElementById('edit-phone').value;
+            userProfile.location = document.getElementById('edit-location').value;
+            userProfile.bio = document.getElementById('edit-bio').value;
+            
+            // Close modal
+            closeEditProfile();
+            
+            // Show success message
+            alert('Profile updated successfully! ✅');
+            
+            // Update profile display if needed
+            updateProfileDisplay();
+        }
+
+        function updateProfileDisplay() {
+            // Update any profile information displayed on the page
+            // This could update the profile section with new data
+            console.log('Profile updated:', userProfile);
+        }
+
+        // Logout function
+        function logout() {
+            if (confirm('Are you sure you want to sign out?')) {
+                alert('You have been signed out successfully!');
+                // In a real app, this would redirect to login page
+            }
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'983277cac6278b06',t:'MTc1ODU1MTA4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
