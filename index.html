@@ -11,6 +11,15 @@
         .chat-bubble {
             animation: slideUp 0.3s ease-out;
         }
+        #messages-widget {
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    
+    .chat-hidden {
+        opacity: 0;
+        transform: translateY(10px);
+        pointer-events: none;
+    }
         @keyframes slideUp {
             from { transform: translateY(20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -449,91 +458,91 @@
             </div>
         </div>
     </div>
-    <!-- Messages Widget -->
-<div id="messages-widget" 
-     class="fixed top-14 right-0 w-96 h-screen bg-white shadow-2xl border-l border-gray-200 hidden z-50">
+    <!-- Seller pending requests (outside chat widget) -->
+<!-- <div id="seller-pending-requests-list" class="p-2 bg-gray-50 border-b border-gray-200 max-h-60 overflow-y-auto"></div> -->
 
-        <!-- Messages Header -->
-        <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                </svg>
-                <div>
-                    <h3 class="font-semibold text-sm">Messages</h3>
-                    <p class="text-xs text-indigo-100">Your conversations</p>
-                </div>
-            </div>
-            <button onclick="toggleChat()" class="text-white hover:text-gray-200 p-1">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                </svg>
+<!-- Chat Widget -->
+<div id="messages-widget" class="hidden fixed bottom-4 right-4 w-80 min-h-[600px] max-h-[970px] bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col z-50">
+    <!-- Your existing chat content remains the same -->
+    <!-- Chat Header -->
+    <div class="bg-indigo-600 text-white p-4 rounded-t-lg">
+        <div class="flex justify-between items-center">
+            <h3 class="font-semibold">Messages</h3>
+            <button onclick="toggleChat(true)" class="text-white hover:text-indigo-200">
+                ✕
             </button>
         </div>
-        
-        <!-- Conversations List -->
-        <div id="conversations-list" class="h-80 overflow-y-auto bg-gray-50">
-            <div class="p-6 text-center text-gray-500">
-                <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                </svg>
-                <p class="text-sm">No conversations yet</p>
-                <p class="text-xs text-gray-400 mt-1">Request a book to start chatting with sellers</p>
+    </div>
+
+    <!-- Pending Requests Section -->
+    <div id="seller-pending-section" class="border-b border-gray-200 hidden">
+        <div class="p-3 bg-yellow-50">
+            <h4 class="text-sm font-semibold text-yellow-800">Pending Requests</h4>
+        </div>
+        <div id="seller-pending-requests-list-widget" class="max-h-32 overflow-y-auto">
+            <!-- Pending requests will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Conversations List -->
+    <div id="conversations-list" class="flex-1 overflow-y-auto">
+        <!-- Conversations will be loaded here -->
+    </div>
+
+    <!-- Chat Room View (hidden by default) -->
+    <div id="chat-room-view" class="hidden flex-1 flex flex-col min-h-0">
+        <!-- Chat Header -->
+        <div class="bg-gray-50 border-b border-gray-200 p-3">
+            <div class="flex items-center space-x-3">
+                <button onclick="goBack()" class="text-gray-600 hover:text-gray-800">
+                    ←
+                </button>
+                <div class="flex-1">
+                    <h4 id="chat-header-name" class="font-semibold text-sm"></h4>
+                    <p id="chat-header-book" class="text-xs text-gray-600"></p>
+                </div>
             </div>
         </div>
-        <!-- Chat Room View (inside widget) -->
-<div id="chat-room-view" class="hidden flex flex-col h-80">
-  <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-    <button onclick="goBack()" class="text-white font-bold">&lt;</button>
-    <div id="chat-header-name" class="font-semibold text-sm">Seller</div>
-  </div>
-  <div id="chat-messages-container" class="flex-1 overflow-y-auto p-2 bg-gray-50"></div>
-  <div class="p-2 border-t flex">
-    <input id="chat-input-field" type="text" placeholder="Type a message..." class="flex-1 px-2 py-1 border rounded" />
-    <button onclick="sendChatMessage()" class="ml-2 px-3 py-1 bg-indigo-600 text-white rounded">Send</button>
-  </div>
-</div>
-    </div>
-    
 
-    <!-- Chat Room Modal -->
-    <div id="chat-room-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 h-96">
-            <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
-                        <span id="chat-partner-initial" class="text-white font-semibold text-sm">S</span>
-                    </div>
-                    <div>
-                        <h3 id="chat-partner-name" class="font-semibold text-sm">Seller</h3>
-                        <p id="chat-book-title" class="text-xs text-indigo-100">Book Title</p>
-                    </div>
-                </div>
-                <button onclick="closeChatRoom()" class="text-white hover:text-gray-200 p-1">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                    </svg>
+        <!-- Messages Container -->
+        <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 min-h-0">
+            <!-- Messages will be loaded here -->
+        </div>
+
+        <!-- Message Input -->
+        <div class="border-t border-gray-200 p-3">
+            <div class="flex space-x-2">
+                <input 
+                    id="chat-input-field"
+                    type="text" 
+                    placeholder="Type a message..." 
+                    class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                <button 
+                    onclick="sendChatMessage()"
+                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
+                >
+                    Send
                 </button>
             </div>
-            
-            <!-- Chat Messages -->
-            <div id="chat-messages" class="h-64 overflow-y-auto p-4 bg-gray-50 space-y-3">
-                <!-- Messages will appear here -->
-            </div>
-            
-            <!-- Chat Input -->
-            <div class="p-4 border-t border-gray-200 bg-white rounded-b-lg">
-                <div class="flex items-center space-x-2">
-                    <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-full text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50">
-                    <button onclick="sendMessage()" class="bg-indigo-600 text-white p-2 rounded-full hover:bg-indigo-700 transition-colors">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
-                        </svg>
-                    </button>
-                </div>
+            <!-- Quick Replies -->
+            <div class="flex flex-wrap gap-2 mt-2">
+                <button onclick="sendQuickReply('Is this still available?')" class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200">
+                    Is this still available?
+                </button>
+                <button onclick="sendQuickReply('Can we meet tomorrow?')" class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200">
+                    Can we meet tomorrow?
+                </button>
+                <button onclick="sendQuickReply('What\'s your location?')" class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200">
+                    What's your location?
+                </button>
             </div>
         </div>
     </div>
+</div>
+
+
+
 
 <!-- <script>
 (function(){

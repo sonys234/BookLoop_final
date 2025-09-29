@@ -5,27 +5,35 @@ const Book = require("../models/Book");
 // GET all books
 router.get("/", async (req, res) => {
   try {
-    const books = await Book.find().populate("seller", "username email bio");
+    const books = await Book.find()
+      .populate("seller", "username email bio"); // populate seller info
     res.json(books); // send array directly
   } catch (err) {
+    console.error("Failed to fetch books:", err);
     res.status(500).json({ error: "Failed to fetch books" });
   }
 });
 
 // ✅ GET books by current user (my listings)
-// routes/books.js
 router.get("/my", async (req, res) => {
   try {
     const userId = req.query.userId; // pass ?userId=xxx
-    const books = await Book.find({ seller: userId });
+    if (!userId) {
+      return res.status(400).json({ error: "userId query param is required" });
+    }
+
+    const books = await Book.find({ seller: userId })
+      .populate("seller", "username email bio") // populate seller info
+      .exec();
+
     res.json(books);
   } catch (err) {
+    console.error("Failed to fetch user books:", err);
     res.status(500).json({ error: "Failed to fetch user books" });
   }
 });
 
 // POST new book
-// ✅ POST new book (no auth for now)
 router.post("/", async (req, res) => {
   try {
     console.log("📩 Incoming book payload:", req.body);
@@ -34,6 +42,7 @@ router.post("/", async (req, res) => {
     if (!title || !author || !seller) {
       return res.status(400).json({ error: "Title, author, and seller are required" });
     }
+
     const book = new Book({
       title,
       author,
@@ -42,11 +51,15 @@ router.post("/", async (req, res) => {
       price,
       location,
       description,
-      seller // pass sellerId from frontend
+      seller // sellerId from frontend
     });
 
-     const savedBook = await book.save();
-      console.log("✅ Book saved:", savedBook);
+    const savedBook = await book.save();
+    // Populate seller info
+await savedBook.populate("seller", "username email bio").execPopulate();
+
+res.status(201).json(savedBook);
+    console.log("✅ Book saved:", savedBook);
     res.status(201).json(savedBook);
   } catch (err) {
     console.error("Book save error:", err);
@@ -54,12 +67,17 @@ router.post("/", async (req, res) => {
   }
 });
 
+// DELETE a book
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { userId } = req.query;
 
     console.log("🛠️ Delete attempt:", { id, userId });
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId query param is required" });
+    }
 
     const book = await Book.findById(id);
     if (!book) return res.status(404).json({ error: "Book not found" });
