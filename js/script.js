@@ -1,4 +1,4 @@
-   console.log("🔥 script.js loaded at " + new Date().toLocaleTimeString());
+console.log("🔥 script.js loaded at " + new Date().toLocaleTimeString());
 
 // =========================
 // Global State with Safe Initialization
@@ -9,202 +9,9 @@ let currentUser = null;
 let isLoggedIn = false;
 let currentChatId = null;
 let conversations = [];
+let isHoveringChat = false;
+let chatCloseTimer = null;
 
-// =========================
-// MISSING FUNCTIONS - ADD THESE
-// =========================
-
-// Photo upload handler
-function handlePhotoUpload(event) {
-    const file = event.target.files[0];
-    if (file) {
-        // For now, just show a success message since we don't have backend for file uploads
-        alert('📸 Photo selected! In a full implementation, this would upload to the server.');
-        
-        // You can add actual file upload logic here later
-        // Example: uploadPhoto(file);
-    }
-}
-
-// Success message function
-function showSuccessMessage(msg) {
-    // Create or use existing success modal
-    let successModal = document.getElementById('success-modal');
-    let successMessage = document.getElementById('success-message');
-    
-    if (!successModal) {
-        // Create success modal if it doesn't exist
-        successModal = document.createElement('div');
-        successModal.id = 'success-modal';
-        successModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
-        successModal.innerHTML = `
-            <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
-                <div class="text-center">
-                    <div class="text-4xl mb-4">✅</div>
-                    <h3 id="success-message" class="text-lg font-semibold text-gray-900 mb-4"></h3>
-                    <button onclick="closeSuccessModal()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">
-                        OK
-                    </button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(successModal);
-    }
-    
-    if (successMessage) {
-        successMessage.textContent = msg;
-    }
-    
-    successModal.classList.remove('hidden');
-}
-
-// Close success modal
-function closeSuccessModal() {
-    const successModal = document.getElementById('success-modal');
-    if (successModal) {
-        successModal.classList.add('hidden');
-    }
-}
-
-// Optional: File upload function (for future use)
-async function uploadPhoto(file) {
-    const token = localStorage.getItem('token');
-    const formData = new FormData();
-    formData.append('photo', file);
-
-    try {
-        const res = await fetch('http://localhost:5000/api/upload', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            body: formData
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            return data.filePath; // Return the uploaded file path
-        } else {
-            throw new Error('Photo upload failed');
-        }
-    } catch (error) {
-        console.error('Photo upload error:', error);
-        return null;
-    }
-}
-
-// =========================
-// UPDATE YOUR listBook FUNCTION
-// =========================
-async function listBook(e) {
-    e.preventDefault();
-    if (!currentUser) return alert("Please log in to list a book!");
-
-    const token = localStorage.getItem("token");
-    if (!token) return alert("Missing auth token, please log in again!");
-
-    const bookData = {
-        title: document.getElementById("book-title").value,
-        author: document.getElementById("book-author").value,
-        genre: document.getElementById("book-genre").value,
-        condition: document.getElementById("book-condition").value,
-        price: parseFloat(document.getElementById("book-price").value),
-        location: document.getElementById("pickup-location").value,
-        description: document.getElementById("book-description").value,
-        seller: currentUser._id
-    };
-
-    // Validate required fields
-    if (!bookData.title || !bookData.author || !bookData.price) {
-        alert("Please fill in title, author, and price");
-        return;
-    }
-
-    try {
-        const res = await fetch("http://localhost:5000/api/books", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(bookData),
-        });
-
-        if (!res.ok) {
-            throw new Error(`Book listing failed with status: ${res.status}`);
-        }
-
-        const newBook = await res.json();
-        if (newBook) {
-            await fetchBooks();
-            await fetchUserListings();
-            e.target.reset();
-            showSuccessMessage("📚 Your book has been listed successfully!");
-        }
-    } catch (err) {
-        console.error("Book listing error:", err);
-        alert("Something went wrong while listing book");
-    }
-}
-// =========================
-// DELETE LISTING FUNCTION
-// =========================
-async function deleteListing(bookId) {
-    if (!currentUser) {
-        alert("Please log in to delete listings!");
-        return;
-    }
-
-    const book = userListings.find(b => b._id === bookId);
-    if (!book) {
-        alert("Book not found in your listings!");
-        return;
-    }
-
-    if (!confirm(`Are you sure you want to delete "${book.title}" from your listings?`)) {
-        return;
-    }
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-        alert("Please log in again!");
-        return;
-    }
-
-    try {
-        const res = await fetch(`http://localhost:5000/api/books/${bookId}`, {
-            method: "DELETE",
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(errorData.error || `Failed to delete listing: ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        if (data.success || res.ok) {
-            // Remove from local state
-            books = books.filter(b => b._id !== bookId);
-            userListings = userListings.filter(b => b._id !== bookId);
-            
-            // Update UI
-            renderBookFeed();
-            renderUserListings();
-            
-            showSuccessMessage("🗑️ Listing deleted successfully!");
-        } else {
-            alert(data.error || "Failed to delete listing");
-        }
-    } catch (err) {
-        console.error("Delete error:", err);
-        alert("Error deleting listing: " + err.message);
-    }
-}
 // =========================
 // Safe DOM Element Helper
 // =========================
@@ -290,7 +97,11 @@ async function loginUser(identifier, password) {
             
             await fetchBooks();
             await fetchUserListings();
-            alert("🎉 Login successful!");
+            
+            // Update pending requests visibility after login
+            updatePendingRequestsVisibility();
+            
+            showSuccessMessage("🎉 Login successful!");
         } else {
             alert(data.error || "Login failed");
         }
@@ -370,7 +181,7 @@ function handleLogout() {
     if (loginModal) loginModal.classList.remove("hidden");
     
     resetUserInterface();
-    alert("👋 Signed out successfully!");
+    showSuccessMessage("👋 Signed out successfully!");
 }
 
 // =========================
@@ -390,6 +201,11 @@ function updateUserInterface() {
         profileAvatar.textContent = (currentUser.username?.charAt(0) || "?").toUpperCase();
     }
 
+    const navbarAvatar = getElement("navbar-avatar");
+    if (navbarAvatar) {
+        navbarAvatar.textContent = (currentUser.username?.charAt(0) || "?").toUpperCase();
+    }
+
     const profileNameElem = getElement("profile-name");
     if (profileNameElem) {
         profileNameElem.textContent = currentUser.username || "Unknown User";
@@ -398,11 +214,6 @@ function updateUserInterface() {
     const fullNameElem = getElement("profile-fullname");
     if (fullNameElem) {
         fullNameElem.textContent = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim();
-    }
-
-    const navbarAvatar = document.querySelector("header .w-8 span");
-    if (navbarAvatar) {
-        navbarAvatar.textContent = (currentUser.username?.charAt(0) || "?").toUpperCase();
     }
 
     const profileBio = getElement("profile-bio");
@@ -557,8 +368,6 @@ function createBookCard(book) {
         <div class="p-4">
             <h3 class="font-semibold text-gray-900 mb-1">${safeBook.title}</h3>
             <p class="text-sm text-gray-600 mb-2">${safeBook.author} • ${safeBook.genre}</p>
-            <p class="text-xs text-gray-500 mb-2">Seller:${safeBook.seller?.username || 'Unknown'} (ID: ${safeBook.seller?._id || 'N/A'})</p>
-
             <div class="flex items-center justify-between mb-3">
                 <span class="text-lg font-bold text-indigo-600">₹${safeBook.price}</span>
                 <span class="text-sm ${conditionColors[safeBook.condition] || 'bg-gray-100 text-gray-800'} px-2 py-1 rounded">
@@ -664,78 +473,54 @@ function renderUserListings() {
             <button onclick="showTab('sell')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700">List a Book</button>
         `;
         container.appendChild(empty);
-        return;
-    }
-
-    userListings.forEach(b => {
-        const card = document.createElement("div");
-        card.className = "flex items-center justify-between p-4 border border-gray-200 rounded-lg mb-3 bg-white";
-        card.innerHTML = `
-            <div class="flex items-center space-x-4 flex-1">
-                <div class="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span class="text-white text-xl">📖</span>
+    } else {
+        userListings.forEach(b => {
+            const card = document.createElement("div");
+            card.className = "flex items-center justify-between p-4 border border-gray-200 rounded-lg mb-3 bg-white";
+            card.innerHTML = `
+                <div class="flex items-center space-x-4 flex-1">
+                    <div class="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span class="text-white text-xl">📖</span>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-gray-900">${b.title || 'Unknown Title'}</h4>
+                        <p class="text-sm text-gray-600">${b.author || 'Unknown Author'}</p>
+                        <p class="text-sm text-gray-500">Listed ${b.dateAdded ? new Date(b.dateAdded).toLocaleDateString() : 'Unknown date'} • ₹${b.price || 0}</p>
+                    </div>
                 </div>
-                <div class="flex-1">
-                    <h4 class="font-semibold text-gray-900">${b.title || 'Unknown Title'}</h4>
-                    <p class="text-sm text-gray-600">${b.author || 'Unknown Author'}</p>
-                    <p class="text-sm text-gray-500">Listed ${b.dateAdded ? new Date(b.dateAdded).toLocaleDateString() : 'Unknown date'} • ₹${b.price || 0}</p>
+                <div class="flex items-center space-x-2">
+                    <button onclick="deleteListing('${b._id}')" 
+                            class="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-1"
+                            title="Delete listing">
+                        <span>🗑️</span>
+                        <span class="text-sm hidden sm:inline">Delete</span>
+                    </button>
                 </div>
-            </div>
-            <div class="flex items-center space-x-2">
-                <button onclick="deleteListing('${b._id}')" 
-                        class="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-1"
-                        title="Delete listing">
-                    <span>🗑️</span>
-                    <span class="text-sm hidden sm:inline">Delete</span>
-                </button>
-            </div>
-        `;
-        container.appendChild(card);
-    });
+            `;
+            container.appendChild(card);
+        });
+    }
+    
+    // Update pending requests visibility when listings change
+    updatePendingRequestsVisibility();
 }
 
 // =========================
-// SIMPLIFIED CHAT FUNCTIONS (For now)
+// DELETE LISTING FUNCTION
 // =========================
-// =========================
-// COMPLETE CHAT SYSTEM IMPLEMENTATION
-// =========================
-
-// Toggle chat widget
-function toggleChat() {
-    if (!isLoggedIn) {
-        alert("Please log in to access messages!");
-        return;
-    }
-    
-    const widget = document.getElementById('messages-widget');
-    if (!widget) {
-        console.error('Messages widget not found');
-        return;
-    }
-    
-    widget.classList.toggle('hidden');
-    
-    if (!widget.classList.contains('hidden')) {
-        // Load data when opening chat
-        initializeChat();
-    }
-}
-
-// Initialize chat data
-async function initializeChat() {
-    try {
-        await fetchConversations();
-        await fetchPendingRequests();
-    } catch (error) {
-        console.error('Error initializing chat:', error);
-    }
-}
-
-// Buyer shows interest in a book
-async function showInterest(bookId) {
+async function deleteListing(bookId) {
     if (!currentUser) {
-        alert("Please log in to show interest!");
+        alert("Please log in to delete listings!");
+        return;
+    }
+
+    const book = userListings.find(b => b._id === bookId);
+    if (!book) {
+        alert("Book not found in your listings!");
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to delete "${book.title}" from your listings?`)) {
         return;
     }
 
@@ -746,115 +531,45 @@ async function showInterest(bookId) {
     }
 
     try {
-        const res = await fetch('http://localhost:5000/api/conversations', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ 
-                bookId: bookId
-            })
-        });
-
-        if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
-        }
-
-        const data = await res.json();
-        
-        if (data.success) {
-            alert("✅ " + data.message);
-        } else {
-            alert("❌ " + (data.error || "Failed to show interest"));
-        }
-    } catch(err) {
-        console.error('Error showing interest:', err);
-        alert("❌ " + (err.message || "Error showing interest. Please try again."));
-    }
-}
-
-// Fetch pending requests for seller
-// Fetch pending requests for seller
-async function fetchPendingRequests() {
-    if (!currentUser || !currentUser._id) {
-        console.log('No user logged in for pending requests');
-        return;
-    }
-
-    const token = localStorage.getItem('token');
-    const container = document.getElementById('seller-pending-requests-list-widget');
-    
-    if (!container) {
-        console.error('Pending requests container not found');
-        return;
-    }
-
-    try {
-        const res = await fetch(`http://localhost:5000/api/conversations/pending/${currentUser._id}`, {
+        const res = await fetch(`http://localhost:5000/api/books/${bookId}`, {
+            method: "DELETE",
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
-        
+
         if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        
-        const data = await res.json();
-        
-        if (!data.pending || data.pending.length === 0) {
-            container.innerHTML = `
-                <div class="p-4 text-center">
-                    <p class="text-gray-500 text-sm">No pending requests</p>
-                    <p class="text-xs text-gray-400 mt-1">When buyers show interest, they'll appear here</p>
-                </div>
-            `;
-            return;
+            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || `Failed to delete listing: ${res.status}`);
         }
 
-        container.innerHTML = data.pending.map(conv => `
-            <div class="p-3 border-b border-gray-100 bg-white hover:bg-gray-50 transition-colors">
-                <div class="flex items-start space-x-2 mb-2">
-                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span class="text-green-600 font-semibold text-xs">
-                            ${conv.buyerId?.username?.charAt(0)?.toUpperCase() || 'U'}
-                        </span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="font-medium text-gray-900 text-sm truncate">${conv.buyerId?.username || 'Unknown User'}</p>
-                        <p class="text-xs text-gray-600 truncate">Interested in: ${conv.bookId?.title || 'Unknown Book'}</p>
-                    </div>
-                </div>
-                <div class="flex gap-1">
-                    <button onclick="handleRequest('${conv._id}', 'accepted')" 
-                            class="flex-1 px-2 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors">
-                        ✅ Accept
-                    </button>
-                    <button onclick="handleRequest('${conv._id}', 'rejected')" 
-                            class="flex-1 px-2 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 transition-colors">
-                        ❌ Reject
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    } catch(err) { 
-        console.error('Error fetching pending requests:', err);
-        container.innerHTML = `
-            <div class="p-4 text-center">
-                <p class="text-red-500 text-sm">Error loading requests</p>
-                <p class="text-xs text-gray-400 mt-1">Please try again later</p>
-            </div>
-        `;
+        const data = await res.json();
+
+        if (data.success || res.ok) {
+            // Remove from local state
+            books = books.filter(b => b._id !== bookId);
+            userListings = userListings.filter(b => b._id !== bookId);
+            
+            // Update UI
+            renderBookFeed();
+            renderUserListings();
+            
+            showSuccessMessage("🗑️ Listing deleted successfully!");
+        } else {
+            alert(data.error || "Failed to delete listing");
+        }
+    } catch (err) {
+        console.error("Delete error:", err);
+        alert("Error deleting listing: " + err.message);
     }
 }
-// Global variable to track hover state
-let isHoveringChat = false;
-let chatCloseTimer = null;
 
-// Modified toggleChat function
+// =========================
+// CHAT SYSTEM IMPLEMENTATION
+// =========================
+
+// Toggle chat widget
 function toggleChat(forceClose = false) {
     if (!isLoggedIn) {
         alert("Please log in to access messages!");
@@ -876,6 +591,7 @@ function toggleChat(forceClose = false) {
             clearTimeout(chatCloseTimer);
             chatCloseTimer = null;
         }
+        removeChatEventListeners();
         return;
     }
     
@@ -980,22 +696,215 @@ function handleChatButtonClick(event) {
     }
 }
 
-// Also update your existing goBack function to prevent unwanted closes
-function goBack() {
-    const chatRoomView = document.getElementById('chat-room-view');
-    const conversationsList = document.getElementById('conversations-list');
-    
-    if (chatRoomView) chatRoomView.classList.add('hidden');
-    if (conversationsList) conversationsList.classList.remove('hidden');
-    currentChatId = null;
-    
-    // Reset hover state when navigating within chat
-    isHoveringChat = true;
-    if (chatCloseTimer) {
-        clearTimeout(chatCloseTimer);
-        chatCloseTimer = null;
+// Show/hide pending requests based on whether user has any listings
+function updatePendingRequests(requests) {
+    const pendingSection = document.getElementById('seller-pending-section');
+    const pendingList = document.getElementById('seller-pending-requests-list-widget');
+
+    if (!requests || requests.length === 0) {
+        pendingSection.classList.add('hidden');
+    } else {
+        pendingSection.classList.remove('hidden');
+        pendingList.innerHTML = ''; // clear old entries
+        requests.forEach(req => {
+            const div = document.createElement('div');
+            div.className = 'p-2 border-b text-sm';
+            div.textContent = req; // customize as needed
+            pendingList.appendChild(div);
+        });
     }
 }
+async function updatePendingRequestsVisibility() {
+    const pendingSection = document.getElementById('seller-pending-section');
+    const container = document.getElementById('seller-pending-requests-list-widget');
+    if (!pendingSection || !container) return;
+
+    console.log('Checking pending requests for user:', currentUser?._id);
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`http://localhost:5000/api/conversations/pending/${currentUser._id}`, {
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+
+        if (data.pending && data.pending.length > 0) {
+            // Show section with actual requests
+            pendingSection.classList.remove('hidden');
+            container.innerHTML = data.pending.map(conv => `
+                <div class="p-3 border-b border-gray-100 bg-white hover:bg-gray-50 transition-colors">
+                    <div class="flex items-start space-x-2 mb-2">
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span class="text-green-600 font-semibold text-xs">
+                                ${conv.buyerId?.username?.charAt(0)?.toUpperCase() || 'U'}
+                            </span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-gray-900 text-sm truncate">${conv.buyerId?.username || 'Unknown User'}</p>
+                            <p class="text-xs text-gray-600 truncate">Interested in: ${conv.bookId?.title || 'Unknown Book'}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="handleRequest('${conv._id}', 'accepted')" 
+                                class="flex-1 px-2 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors">
+                            ✅ Accept
+                        </button>
+                        <button onclick="handleRequest('${conv._id}', 'rejected')" 
+                                class="flex-1 px-2 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 transition-colors">
+                            ❌ Reject
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            // Hide section completely if no pending requests
+            pendingSection.classList.add('hidden');
+            container.innerHTML = '';
+        }
+    } catch(err) {
+        console.error('Error updating pending requests:', err);
+        pendingSection.classList.add('hidden');
+        container.innerHTML = '';
+    }
+}
+
+
+// Initialize chat data
+async function initializeChat() {
+    try {
+        await fetchConversations();
+        // Update pending requests visibility based on user listings
+        updatePendingRequestsVisibility();
+    } catch (error) {
+        console.error('Error initializing chat:', error);
+    }
+}
+
+// Buyer shows interest in a book
+async function showInterest(bookId) {
+    if (!currentUser) {
+        alert("Please log in to show interest!");
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert("Please log in again!");
+        return;
+    }
+
+    try {
+        const res = await fetch('http://localhost:5000/api/conversations', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+                bookId: bookId
+            })
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+        
+        if (data.success) {
+            showSuccessMessage("✅ " + data.message);
+        } else {
+            alert("❌ " + (data.error || "Failed to show interest"));
+        }
+    } catch(err) {
+        console.error('Error showing interest:', err);
+        alert("❌ " + (err.message || "Error showing interest. Please try again."));
+    }
+}
+
+// Fetch pending requests for seller
+async function fetchPendingRequests() {
+    if (!currentUser || !currentUser._id) {
+        console.log('No user logged in for pending requests');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    const container = document.getElementById('seller-pending-requests-list-widget');
+    
+    if (!container) {
+        console.error('Pending requests container not found - looking for: seller-pending-requests-list-widget');
+        return;
+    }
+
+    console.log('Fetching pending requests for user:', currentUser._id);
+
+    try {
+        const res = await fetch(`http://localhost:5000/api/conversations/pending/${currentUser._id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        console.log('Pending requests data:', data);
+        
+        if (!data.pending || data.pending.length === 0) {
+            container.innerHTML = `
+                <div class="p-4 text-center">
+                    <p class="text-gray-500 text-sm">No pending requests</p>
+                    <p class="text-xs text-gray-400 mt-1">When buyers show interest, they'll appear here</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = data.pending.map(conv => `
+            <div class="p-3 border-b border-gray-100 bg-white hover:bg-gray-50 transition-colors">
+                <div class="flex items-start space-x-2 mb-2">
+                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span class="text-green-600 font-semibold text-xs">
+                            ${conv.buyerId?.username?.charAt(0)?.toUpperCase() || 'U'}
+                        </span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-gray-900 text-sm truncate">${conv.buyerId?.username || 'Unknown User'}</p>
+                        <p class="text-xs text-gray-600 truncate">Interested in: ${conv.bookId?.title || 'Unknown Book'}</p>
+                    </div>
+                </div>
+                <div class="flex gap-1">
+                    <button onclick="handleRequest('${conv._id}', 'accepted')" 
+                            class="flex-1 px-2 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors">
+                        ✅ Accept
+                    </button>
+                    <button onclick="handleRequest('${conv._id}', 'rejected')" 
+                            class="flex-1 px-2 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 transition-colors">
+                        ❌ Reject
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch(err) { 
+        console.error('Error fetching pending requests:', err);
+        container.innerHTML = `
+            <div class="p-4 text-center">
+                <p class="text-red-500 text-sm">Error loading requests</p>
+                <p class="text-xs text-gray-400 mt-1">Please try again later</p>
+            </div>
+        `;
+    }
+}
+
 // Seller approves/rejects request
 async function handleRequest(convId, status) {
     const token = localStorage.getItem('token');
@@ -1023,7 +932,7 @@ async function handleRequest(convId, status) {
         
         if (data.success) {
             const action = status === 'accepted' ? 'accepted' : 'rejected';
-            alert(`✅ Request ${action} successfully!`);
+            showSuccessMessage(`✅ Request ${action} successfully!`);
             
             // Refresh the data
             await fetchPendingRequests();
@@ -1321,6 +1230,13 @@ function goBack() {
     if (chatRoomView) chatRoomView.classList.add('hidden');
     if (conversationsList) conversationsList.classList.remove('hidden');
     currentChatId = null;
+    
+    // Reset hover state when navigating within chat
+    isHoveringChat = true;
+    if (chatCloseTimer) {
+        clearTimeout(chatCloseTimer);
+        chatCloseTimer = null;
+    }
 }
 
 // Demo data for testing (if backend is not ready)
@@ -1366,8 +1282,125 @@ function showDemoChat() {
     `;
 }
 
-// Add Enter key support for chat input
-document.addEventListener('DOMContentLoaded', function() {
+// =========================
+// UTILITY FUNCTIONS
+// =========================
+
+// Photo upload handler
+function handlePhotoUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        // For now, just show a success message since we don't have backend for file uploads
+        showSuccessMessage('📸 Photo selected! In a full implementation, this would upload to the server.');
+        
+        // You can add actual file upload logic here later
+        // Example: uploadPhoto(file);
+    }
+}
+
+// Success message function
+function showSuccessMessage(msg) {
+    // Create or use existing success modal
+    let successModal = document.getElementById('success-modal');
+    let successMessage = document.getElementById('success-message');
+    
+    if (!successModal) {
+        // Create success modal if it doesn't exist
+        successModal = document.createElement('div');
+        successModal.id = 'success-modal';
+        successModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+        successModal.innerHTML = `
+            <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+                <div class="text-center">
+                    <div class="text-4xl mb-4">✅</div>
+                    <h3 id="success-message" class="text-lg font-semibold text-gray-900 mb-4"></h3>
+                    <button onclick="closeSuccessModal()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">
+                        OK
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(successModal);
+    }
+    
+    if (successMessage) {
+        successMessage.textContent = msg;
+    }
+    
+    successModal.classList.remove('hidden');
+}
+
+// Close success modal
+function closeSuccessModal() {
+    const successModal = document.getElementById('success-modal');
+    if (successModal) {
+        successModal.classList.add('hidden');
+    }
+}
+
+// Edit Profile Functions
+function openEditProfile() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (!modal) return;
+    
+    // Fill form with current user data
+    document.getElementById('edit-username').value = currentUser.username || '';
+    document.getElementById('edit-email').value = currentUser.email || '';
+    document.getElementById('edit-phone').value = currentUser.phone || '';
+    document.getElementById('edit-location').value = currentUser.location || '';
+    document.getElementById('edit-bio').value = currentUser.bio || '';
+    
+    modal.classList.remove('hidden');
+}
+
+function closeEditProfile() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Sort and Search Functions
+function sortBooks(criteria) {
+    console.log("Sorting by:", criteria);
+    // Basic implementation
+    if (criteria === "price") {
+        books.sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (criteria === "newest") {
+        books.sort((a, b) => new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0));
+    }
+    renderBookFeed();
+}
+
+function searchBooks() {
+    const query = getElement("search-input")?.value.toLowerCase() || "";
+    console.log("Searching for:", query);
+    // Basic search implementation
+    const results = books.filter(book => 
+        book.title?.toLowerCase().includes(query) || 
+        book.author?.toLowerCase().includes(query)
+    );
+    
+    const container = getElement("search-results");
+    if (container) {
+        container.innerHTML = "";
+        results.forEach(book => {
+            const card = document.createElement("div");
+            card.innerHTML = createBookCard(book);
+            if (card.firstElementChild) {
+                container.appendChild(card.firstElementChild);
+            }
+        });
+    }
+}
+
+// =========================
+// SAFE INITIALIZATION
+// =========================
+document.addEventListener("DOMContentLoaded", async function() {
+    console.log("DOM fully loaded, initializing app...");
+    
+    // Add Enter key support for chat input
     const chatInput = document.getElementById('chat-input-field');
     if (chatInput) {
         chatInput.addEventListener('keypress', function(e) {
@@ -1376,13 +1409,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
-
-// =========================
-// SAFE INITIALIZATION
-// =========================
-document.addEventListener("DOMContentLoaded", async function() {
-    console.log("DOM fully loaded, initializing app...");
     
     try {
         // Check for existing user session
@@ -1427,122 +1453,3 @@ document.addEventListener("DOMContentLoaded", async function() {
         alert("Error loading the application. Please refresh the page.");
     }
 });
-
-async function deleteListing(bookId) {
-  const book = userListings.find(b => b._id === bookId);
-  if (!book) return;
-
-  if (!confirm(`Are you sure you want to delete "${book.title}" from your listings?`)) return;
-
-  try {
-    const res = await fetch(`http://localhost:5000/api/books/${bookId}?userId=${currentUser._id}`, {
-      method: "DELETE",
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      // remove from state
-      books = books.filter(b => b._id !== bookId);
-      userListings = userListings.filter(b => b._id !== bookId);
-      renderBookFeed();
-      renderUserListings();
-      alert(data.message || "Listing deleted successfully! 🗑️");
-    } else {
-      alert(data.error || "Failed to delete listing");
-    }
-  } catch (err) {
-    console.error("Delete error:", err);
-    alert("Something went wrong while deleting listing");
-  }
-}
-
-function sortBooks(criteria) {
-    console.log("Sorting by:", criteria);
-    // Basic implementation
-    if (criteria === "price") {
-        books.sort((a, b) => (a.price || 0) - (b.price || 0));
-    } else if (criteria === "newest") {
-        books.sort((a, b) => new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0));
-    }
-    renderBookFeed();
-}
-
-function searchBooks() {
-    const query = getElement("search-input")?.value.toLowerCase() || "";
-    console.log("Searching for:", query);
-    // Basic search implementation
-    const results = books.filter(book => 
-        book.title?.toLowerCase().includes(query) || 
-        book.author?.toLowerCase().includes(query)
-    );
-    
-    const container = getElement("search-results");
-    if (container) {
-        container.innerHTML = "";
-        results.forEach(book => {
-            const card = document.createElement("div");
-            card.innerHTML = createBookCard(book);
-            if (card.firstElementChild) {
-                container.appendChild(card.firstElementChild);
-            }
-        });
-    }
-}
-// =========================
-// PROFILE EDIT FORM HANDLER
-// =========================
-function openEditProfile() {
-  if (!currentUser) return alert("Please log in first!");
-
-  document.getElementById("edit-username").value = currentUser.username ||"";
-  document.getElementById("edit-email").value = currentUser.email || "";
-  document.getElementById("edit-phone").value = currentUser.phone || "";
-  document.getElementById("edit-location").value = currentUser.location || "";
-  document.getElementById("edit-bio").value = currentUser.bio || "";
-
-  document.getElementById("edit-profile-modal").classList.remove("hidden");
-}
-
-function closeEditProfile() {
-  document.getElementById("edit-profile-modal").classList.add("hidden");
-}
-
-async function handleEditProfile() {
-  if (!currentUser) return alert("Not logged in!");
-
-  const updates = {
-    username: document.getElementById("edit-username").value,
-    email:     document.getElementById("edit-email").value,
-    phone:     document.getElementById("edit-phone").value,
-    location:  document.getElementById("edit-location").value,
-    bio:       document.getElementById("edit-bio").value,
-  };
-
-  try {
-    const res = await fetch(`http://localhost:5000/api/auth/profile/${currentUser._id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
-
-    const updatedUser = await res.json();
-
-    if (res.ok) {
-      currentUser = updatedUser.user;
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      updateUserInterface();
-      closeEditProfile();
-      showSuccessMessage("✅ Profile updated successfully!");
-    } else {
-      alert(updatedUser.error || "Failed to update profile");
-    }
-  } catch (err) {
-    console.error("Profile update error:", err);
-    alert("Something went wrong while updating profile");
-  }
-}
-document.getElementById("edit-profile-form").addEventListener("submit", function (e) {
-  e.preventDefault();
-  handleEditProfile();
-})
