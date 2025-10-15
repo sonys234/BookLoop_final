@@ -6,20 +6,10 @@
     <title>BookLoop - Buy & Sell Books</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
-
     <style>
         .chat-bubble {
             animation: slideUp 0.3s ease-out;
         }
-        #messages-widget {
-        transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-    
-    .chat-hidden {
-        opacity: 0;
-        transform: translateY(10px);
-        pointer-events: none;
-    }
         @keyframes slideUp {
             from { transform: translateY(20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -42,6 +32,14 @@
             padding: 3rem;
             color: #6b7280;
         }
+        #messages-widget {
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .chat-hidden {
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -61,14 +59,13 @@
                 <div class="flex items-center space-x-4">
                     <button onclick="toggleChat()" class="relative p-2 text-gray-600 hover:text-indigo-600">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                </svg>
-                <div>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
                         <span id="message-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
                     </button>
                     <div class="relative group">
                         <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center cursor-pointer">
-                            <span class="text-indigo-600 font-semibold">U</span>
+                            <span id="navbar-avatar" class="text-indigo-600 font-semibold">U</span>
                         </div>
                         <!-- Dropdown Menu -->
                         <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
@@ -91,35 +88,22 @@
             <div class="flex flex-wrap gap-3 mb-6">
                 <button onclick="sortBooks('newest')" class="filter-chip bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium">Newest</button>
                 <button onclick="sortBooks('price')" class="filter-chip bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-50">Price: Low to High</button>
-                <!-- <button onclick="sortBooks('nearby')" class="filter-chip bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-50">Nearby</button> -->
             </div>
 
             <!-- Book Feed -->
-            <div id="book-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div id="book-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <div class="col-span-full empty-state">
                     <div class="text-6xl mb-4">📚</div>
                     <h3 class="text-xl font-semibold text-gray-900 mb-2">No books listed yet</h3>
                     <p class="text-gray-600 mb-4">Be the first to list a book and start the BookLoop community!</p>
                     <button onclick="showTab('sell')" 
-                    class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">
-                    List Your First Book
-                </button>
+                            class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">
+                        List Your First Book
+                    </button>
                 </div>
             </div>
         </div>
-            <!-- Books Grid -->
-            <!-- <div id="books-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <div class="col-span-full flex flex-col items-center justify-center py-16">
-                    <div class="text-6xl mb-4">📚</div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">No Books Available</h3>
-                    <p class="text-gray-600 mb-4">Books will appear here once they are listed for sale</p>
-                    <button onclick="showTab('sell')" 
-                     class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">
-                     List Your First Book
-                    </button>
-                </div>
-            </div> -->
-      
+
         <!-- Buy Tab -->
         <div id="buy-tab" class="tab-content hidden">
             <!-- Search and Filters -->
@@ -239,16 +223,14 @@
                 <!-- Profile Info -->
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <div class="text-center mb-6">
-  <div class="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-    <span id="profile-avatar" class="text-indigo-600 text-2xl font-bold">?</span>
-  </div>
-  <h3 id="profile-name" class="text-xl font-semibold text-gray-900">Your Profile</h3>
-  <p id="profile-fullname" class="text-sm text-gray-600"></p>
-  <!-- <p class="text-gray-600">📧 Email Verification Pending</p> -->
-  <div id="profile-bio" class="text-gray-600 text-sm mt-2 text-center">
-  📖 No bio yet
-</div>
-
+                        <div class="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span id="profile-avatar" class="text-indigo-600 text-2xl font-bold">?</span>
+                        </div>
+                        <h3 id="profile-name" class="text-xl font-semibold text-gray-900">Your Profile</h3>
+                        <p id="profile-fullname" class="text-sm text-gray-600"></p>
+                        <div id="profile-bio" class="text-gray-600 text-sm mt-2 text-center">
+                            📖 No bio yet
+                        </div>
                     </div>
                     
                     <div class="space-y-4">
@@ -266,12 +248,9 @@
                         </div>
                     </div>
                     <button onclick="openEditProfile()" 
-        class="w-full mt-6 bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">
-  Edit Profile
-</button>
-
-
-                    <!-- <button class="w-full mt-6 bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">Edit Profile</button> -->
+                            class="w-full mt-6 bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">
+                        Edit Profile
+                    </button>
                 </div>
 
                 <!-- My Listings -->
@@ -294,80 +273,55 @@
     </main>
 
     <!-- Edit Profile Modal -->
-<div id="edit-profile-modal" 
-     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-    <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-      <h3 class="font-semibold">Edit Profile</h3>
-      <button onclick="closeEditProfile()" 
-              class="text-white hover:text-gray-200">✕</button>
+    <div id="edit-profile-modal" 
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+                <h3 class="font-semibold">Edit Profile</h3>
+                <button onclick="closeEditProfile()" 
+                        class="text-white hover:text-gray-200">✕</button>
+            </div>
+            <form id="edit-profile-form" class="p-6">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                        <input type="text" id="edit-username"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" id="edit-email"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                        <input type="tel" id="edit-phone"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                        <input type="text" id="edit-location"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="City, State">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                        <textarea id="edit-bio" rows="3"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                  placeholder="Tell others about yourself..."></textarea>
+                    </div>
+                </div>
+                <div class="flex space-x-3 mt-6">
+                    <button type="button" onclick="closeEditProfile()"
+                            class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors">Cancel</button>
+                    <button type="submit"
+                            class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors">Save Changes</button>
+                </div>
+            </form>
+        </div>
     </div>
-    <form id="edit-profile-form" class="p-6">
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-          <input type="text" id="edit-username"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                 required>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-          <input type="email" id="edit-email"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                 required>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-          <input type="tel" id="edit-phone"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
-          <input type="text" id="edit-location"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                 placeholder="City, State">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-          <textarea id="edit-bio" rows="3"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Tell others about yourself..."></textarea>
-        </div>
-      </div>
-      <div class="flex space-x-3 mt-6">
-        <button type="button" onclick="closeEditProfile()"
-                class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors">Cancel</button>
-        <button type="submit"
-                class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors">Save Changes</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-
-    <!-- Chat Modal -->
-    <!-- <div id="chat-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
-        <div class="fixed right-4 top-20 bottom-4 w-80 bg-white rounded-lg shadow-xl flex flex-col">
-            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 class="font-semibold text-gray-900">Messages</h3>
-                <button onclick="toggleChat()" class="text-gray-500 hover:text-gray-700">✕</button>
-            </div>
-            
-            <div id="chat-messages" class="flex-1 overflow-y-auto p-4">
-                <div class="empty-state">
-                    <div class="text-4xl mb-4">💬</div>
-                    <p class="text-gray-600">No messages yet. Start a conversation by showing interest in a book!</p>
-                </div>
-            </div>
-            
-            <div class="p-4 border-t border-gray-200">
-                <div class="flex space-x-2">
-                    <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                    <button onclick="sendMessage()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Send</button>
-                </div>
-            </div>
-        </div>
-    </div> -->
 
     <!-- Success Modal -->
     <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
@@ -409,8 +363,6 @@
                     </div>
                     <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">Sign In</button>
                 </form>
-                
-                
             </div>
             
             <!-- Register Form -->
@@ -458,127 +410,91 @@
             </div>
         </div>
     </div>
-    <!-- Seller pending requests (outside chat widget) -->
-<!-- <div id="seller-pending-requests-list" class="p-2 bg-gray-50 border-b border-gray-200 max-h-60 overflow-y-auto"></div> -->
 
-<!-- Chat Widget -->
-<div id="messages-widget" class="hidden fixed bottom-4 right-4 w-80 min-h-[600px] max-h-[970px] bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col z-50">
-    <!-- Your existing chat content remains the same -->
-    <!-- Chat Header -->
-    <div class="bg-indigo-600 text-white p-4 rounded-t-lg">
-        <div class="flex justify-between items-center">
-            <h3 class="font-semibold">Messages</h3>
-            <button onclick="toggleChat(true)" class="text-white hover:text-indigo-200">
-                ✕
-            </button>
+    <!-- Chat Widget -->
+     <div id="messages-widget" class="hidden chat-hidden fixed bottom-4 right-4 w-80 h-[41rem] bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col z-50">
+
+        <!-- Chat Header -->
+        <div class="bg-indigo-600 text-white p-4 rounded-t-lg">
+            <div class="flex justify-between items-center">
+                <h3 class="font-semibold">Messages</h3>
+                <button onclick="toggleChat(true)" class="text-white hover:text-indigo-200">
+                    ✕
+                </button>
+            </div>
         </div>
-    </div>
 
-    <!-- Pending Requests Section -->
+        <!-- Pending Requests Section (hidden by default) -->
     <div id="seller-pending-section" class="border-b border-gray-200 hidden">
         <div class="p-3 bg-yellow-50">
             <h4 class="text-sm font-semibold text-yellow-800">Pending Requests</h4>
         </div>
-        <div id="seller-pending-requests-list-widget" class="max-h-32 overflow-y-auto">
-            <!-- Pending requests will be loaded here -->
+        <div id="seller-pending-requests-list-widget" class="max-h-32 overflow-y-auto"></div>
+    </div>
+
+        <!-- Conversations List -->
+        <div id="conversations-list" class="flex-1 overflow-y-auto">
+            <div class="p-6 text-center">
+                <div class="text-4xl mb-3">💬</div>
+                <p class="text-gray-500 text-sm">No conversations yet</p>
+                <p class="text-xs text-gray-400 mt-1">When sellers accept your requests, they'll appear here</p>
+            </div>
         </div>
-    </div>
 
-    <!-- Conversations List -->
-    <div id="conversations-list" class="flex-1 overflow-y-auto">
-        <!-- Conversations will be loaded here -->
-    </div>
+        <!-- Chat Room View (hidden by default) -->
+        <div id="chat-room-view" class="hidden flex-1 flex flex-col">
+            <!-- Chat Header -->
+            <div class="bg-gray-50 border-b border-gray-200 p-3">
+                <div class="flex items-center space-x-3">
+                    <button onclick="goBack()" class="text-gray-600 hover:text-gray-800">
+                        ←
+                    </button>
+                    <div class="flex-1">
+                        <h4 id="chat-header-name" class="font-semibold text-sm"></h4>
+                        <p id="chat-header-book" class="text-xs text-gray-600"></p>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Chat Room View (hidden by default) -->
-    <div id="chat-room-view" class="hidden flex-1 flex flex-col min-h-0">
-        <!-- Chat Header -->
-        <div class="bg-gray-50 border-b border-gray-200 p-3">
-            <div class="flex items-center space-x-3">
-                <button onclick="goBack()" class="text-gray-600 hover:text-gray-800">
-                    ←
-                </button>
-                <div class="flex-1">
-                    <h4 id="chat-header-name" class="font-semibold text-sm"></h4>
-                    <p id="chat-header-book" class="text-xs text-gray-600"></p>
+            <!-- Messages Container -->
+            <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4">
+                <!-- Messages will be loaded here -->
+            </div>
+
+            <!-- Message Input -->
+            <div class="border-t border-gray-200 p-3">
+                <div class="flex space-x-2">
+                    <input 
+                        id="chat-input-field"
+                        type="text" 
+                        placeholder="Type a message..." 
+                        class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                    <button 
+                        onclick="sendChatMessage()"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
+                    >
+                        Send
+                    </button>
+                </div>
+                <!-- Quick Replies -->
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <button onclick="sendQuickReply('Is this still available?')" class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200">
+                        Is this still available?
+                    </button>
+                    <button onclick="sendQuickReply('Can we meet tomorrow?')" class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200">
+                        Can we meet tomorrow?
+                    </button>
+                    <button onclick="sendQuickReply('What\'s your location?')" class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200">
+                        What's your location?
+                    </button>
                 </div>
             </div>
         </div>
-
-        <!-- Messages Container -->
-        <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 min-h-0">
-            <!-- Messages will be loaded here -->
-        </div>
-
-        <!-- Message Input -->
-        <div class="border-t border-gray-200 p-3">
-            <div class="flex space-x-2">
-                <input 
-                    id="chat-input-field"
-                    type="text" 
-                    placeholder="Type a message..." 
-                    class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                <button 
-                    onclick="sendChatMessage()"
-                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-                >
-                    Send
-                </button>
-            </div>
-            <!-- Quick Replies -->
-            <div class="flex flex-wrap gap-2 mt-2">
-                <button onclick="sendQuickReply('Is this still available?')" class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200">
-                    Is this still available?
-                </button>
-                <button onclick="sendQuickReply('Can we meet tomorrow?')" class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200">
-                    Can we meet tomorrow?
-                </button>
-                <button onclick="sendQuickReply('What\'s your location?')" class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200">
-                    What's your location?
-                </button>
-            </div>
-        </div>
     </div>
-</div>
 
+   
 
-
-
-<!-- <script>
-(function(){
-    function c(){
-        var b=a.contentDocument||a.contentWindow.document;
-        if(b){
-            var d=b.createElement('script'); 
-            d.innerHTML="window.__CFfprof$cv$params={r:'96a722cd65bc8b03',t:'MTc1NDQwNTczMi4wMDAwMDA='}; var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; 
-            b.getElementsByTagName('head')[0].appendChild(d)
-            }
-        }
-        if(document.body){
-            var a=document.createElement('iframe'); 
-            a.height=1;
-            a.width=1;
-            a.style.position='absolute';
-            a.style.top=0;
-            a.style.left=0;
-            a.style.border='none';
-            a.style.visibility='hidden';
-            document.body.appendChild(a);
-            if('loading'!==document.readyState)
-            c();
-        else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);
-        else{
-            var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){
-                e(b);
-                'loading'!==document.readyState&&(document.onreadystatechange=e,c()
-                )}
-            }
-        }
-    }
-)();
-</script> -->
-<script src="js/script.js"></script>
+    <script src="js/script.js"></script>
 </body>
 </html>
-
-
