@@ -113,7 +113,8 @@
                     <button onclick="searchBooks()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">Search</button>
                 </div>
                 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Enhanced Location Filters -->
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <select id="genre-filter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
                         <option value="">All Genres</option>
                         <option value="fiction">Fiction</option>
@@ -133,6 +134,21 @@
                     
                     <input type="number" id="min-price" placeholder="Min Price" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
                     <input type="number" id="max-price" placeholder="Max Price" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    
+                    <!-- Location Filters -->
+                    <input type="text" id="area-filter" placeholder="Area/Locality" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="city-filter" placeholder="City" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <!-- Second row for more filters -->
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-4">
+                    <input type="text" id="state-filter" placeholder="State (Optional)" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="country-filter" placeholder="Country" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    
+                    <!-- Clear Filters Button -->
+                    <button onclick="clearFilters()" class="bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors col-span-2">
+                        Clear Filters
+                    </button>
                 </div>
             </div>
 
@@ -190,10 +206,36 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">Price (₹) *</label>
                             <input type="number" id="book-price" required min="1" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                         </div>
+                    </div>
+
+                    <!-- Detailed Location Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Area/Locality *</label>
+                            <input type="text" id="book-area" required 
+                                   placeholder="e.g., Downtown, University Campus, Sector 15"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Pickup Location *</label>
-                            <input type="text" id="pickup-location" required placeholder="e.g., Campus Library, Downtown" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                            <input type="text" id="book-city" required 
+                                   placeholder="e.g., Mumbai, Delhi, Bangalore"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">State (Optional)</label>
+                            <input type="text" id="book-state" 
+                                   placeholder="e.g., Maharashtra, Karnataka, California"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Country *</label>
+                            <input type="text" id="book-country" required 
+                                   placeholder="e.g., India, USA, UK"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                         </div>
                     </div>
                     
@@ -202,14 +244,16 @@
                         <textarea id="book-description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Any additional details about the book..."></textarea>
                     </div>
                     
+                    <!-- Enhanced Photo Upload Section -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Photos</label>
                         <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors cursor-pointer" onclick="document.getElementById('photo-input').click()">
                             <span class="text-4xl mb-2 block">📷</span>
                             <p class="text-gray-600">Click to upload photos or drag and drop</p>
+                            <p class="text-xs text-gray-500 mt-1">Upload up to 5 images (JPEG, PNG, WebP)</p>
                             <input type="file" id="photo-input" multiple accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
                         </div>
-                        <div id="photo-preview" class="mt-4 grid grid-cols-3 gap-4 hidden"></div>
+                        <div id="photo-preview" class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"></div>
                     </div>
                     
                     <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors">List Book</button>
@@ -281,7 +325,7 @@
                 <button onclick="closeEditProfile()" 
                         class="text-white hover:text-gray-200">✕</button>
             </div>
-            <form id="edit-profile-form" class="p-6">
+            <form id="edit-profile-form" onsubmit="updateProfile(event)" class="p-6">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
@@ -412,8 +456,7 @@
     </div>
 
     <!-- Chat Widget -->
-     <div id="messages-widget" class="hidden chat-hidden fixed bottom-4 right-4 w-80 h-[41rem] bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col z-50">
-
+    <div id="messages-widget" class="hidden chat-hidden fixed bottom-4 right-4 w-80 h-[41rem] bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col z-50">
         <!-- Chat Header -->
         <div class="bg-indigo-600 text-white p-4 rounded-t-lg">
             <div class="flex justify-between items-center">
@@ -424,13 +467,13 @@
             </div>
         </div>
 
-        <!-- Pending Requests Section (hidden by default) -->
-    <div id="seller-pending-section" class="border-b border-gray-200 hidden">
-        <div class="p-3 bg-yellow-50">
-            <h4 class="text-sm font-semibold text-yellow-800">Pending Requests</h4>
+        <!-- Pending Requests Section -->
+        <div id="seller-pending-section" class="border-b border-gray-200 hidden">
+            <div class="p-3 bg-yellow-50">
+                <h4 class="text-sm font-semibold text-yellow-800">Pending Requests</h4>
+            </div>
+            <div id="seller-pending-requests-list-widget" class="max-h-32 overflow-y-auto"></div>
         </div>
-        <div id="seller-pending-requests-list-widget" class="max-h-32 overflow-y-auto"></div>
-    </div>
 
         <!-- Conversations List -->
         <div id="conversations-list" class="flex-1 overflow-y-auto">
@@ -441,7 +484,7 @@
             </div>
         </div>
 
-        <!-- Chat Room View (hidden by default) -->
+        <!-- Chat Room View -->
         <div id="chat-room-view" class="hidden flex-1 flex flex-col">
             <!-- Chat Header -->
             <div class="bg-gray-50 border-b border-gray-200 p-3">
@@ -493,7 +536,196 @@
         </div>
     </div>
 
-   
+    <!-- Image Modal -->
+    <div id="image-modal" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center hidden z-50">
+        <div class="max-w-4xl max-h-full w-full mx-4">
+            <div class="bg-black rounded-lg overflow-hidden relative">
+                <!-- Close Button -->
+                <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white text-2xl z-10 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75">
+                    ✕
+                </button>
+                
+                <!-- Navigation Arrows -->
+                <button onclick="navigateImage(-1)" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-2xl z-10 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75">
+                    ‹
+                </button>
+                <button onclick="navigateImage(1)" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-2xl z-10 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75">
+                    ›
+                </button>
+                
+                <!-- Image Display -->
+                <div class="flex items-center justify-center h-96 md:h-[500px]">
+                    <img id="modal-image" src="" alt="Book image" class="max-w-full max-h-full object-contain">
+                </div>
+                
+                <!-- Image Counter -->
+                <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm">
+                    <span id="image-counter">1 / 1</span>
+                </div>
+                
+                <!-- Thumbnail Strip -->
+                <div id="thumbnail-strip" class="flex justify-center space-x-2 p-4 bg-black bg-opacity-50 overflow-x-auto">
+                    <!-- Thumbnails will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Description Modal -->
+    <div id="description-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-96 overflow-hidden">
+            <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+                <h3 id="description-title" class="font-semibold text-lg">Book Description</h3>
+                <button onclick="closeDescriptionModal()" class="text-white hover:text-gray-200 text-xl">✕</button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto max-h-64">
+                <!-- Seller Info in Modal -->
+                <div class="flex items-center text-sm text-gray-600 mb-4 p-3 bg-gray-50 rounded-lg">
+                    <span class="mr-2">👤</span>
+                    <span><strong>Seller:</strong> <span id="modal-seller-name">Unknown Seller</span></span>
+                </div>
+                
+                <!-- Description Content -->
+                <div class="mb-4">
+                    <h4 class="font-medium text-gray-900 mb-2">Description:</h4>
+                    <div id="description-content" class="text-gray-700 bg-gray-50 p-3 rounded-lg min-h-20">
+                        <!-- Description will be inserted here -->
+                    </div>
+                </div>
+                
+                <!-- No Description State -->
+                <div id="no-description" class="hidden text-center py-8">
+                    <div class="text-4xl mb-3">📝</div>
+                    <p class="text-gray-500 font-medium">No description provided</p>
+                    <p class="text-sm text-gray-400 mt-1">The seller hasn't added a description for this book</p>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <button onclick="closeDescriptionModal()" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Listing Modal -->
+    <div id="edit-listing-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-90vh overflow-hidden">
+            <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+                <h3 class="font-semibold text-lg">Edit Book Listing</h3>
+                <button onclick="closeEditListingModal()" class="text-white hover:text-gray-200 text-xl">✕</button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto max-h-96">
+                <form id="edit-listing-form" class="space-y-6">
+                    <input type="hidden" id="edit-book-id">
+                    
+                    <!-- Book Details -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Book Title *</label>
+                            <input type="text" id="edit-book-title" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Author *</label>
+                            <input type="text" id="edit-book-author" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Genre *</label>
+                            <select id="edit-book-genre" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Select Genre</option>
+                                <option value="fiction">Fiction</option>
+                                <option value="non-fiction">Non-Fiction</option>
+                                <option value="science">Science</option>
+                                <option value="history">History</option>
+                                <option value="romance">Romance</option>
+                                <option value="mystery">Mystery</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Condition *</label>
+                            <select id="edit-book-condition" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Select Condition</option>
+                                <option value="new">New</option>
+                                <option value="slightly-used">Slightly Used</option>
+                                <option value="well-read">Well-Read</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Price (₹) *</label>
+                            <input type="number" id="edit-book-price" required min="1" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                    </div>
+
+                    <!-- Location Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Area/Locality *</label>
+                            <input type="text" id="edit-book-area" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                            <input type="text" id="edit-book-city" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">State (Optional)</label>
+                            <input type="text" id="edit-book-state" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Country *</label>
+                            <input type="text" id="edit-book-country" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="edit-book-description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Describe your book..."></textarea>
+                    </div>
+                    
+                    <!-- Current Images Display -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Images</label>
+                        <div id="current-images" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+                            <!-- Current images will be displayed here -->
+                        </div>
+                        <p class="text-xs text-gray-500 mb-4">Click the ❌ button to remove individual images</p>
+                    </div>
+
+                    <!-- Add New Images -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Add More Images</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors cursor-pointer" 
+                             onclick="document.getElementById('edit-photo-input').click()">
+                            <span class="text-4xl mb-2 block">➕</span>
+                            <p class="text-gray-600">Click to add more photos</p>
+                            <p class="text-xs text-gray-500 mt-1">Upload additional images (max 5 total)</p>
+                            <input type="file" id="edit-photo-input" multiple accept="image/*" class="hidden" 
+                                   onchange="handleEditPhotoUpload(event)">
+                        </div>
+                        <div id="edit-photo-preview" class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 hidden"></div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg flex justify-between">
+                <button onclick="closeEditListingModal()" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-400 transition-colors">
+                    Cancel
+                </button>
+                <button onclick="updateListing()" class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors">
+                    Update Listing
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="js/script.js"></script>
 </body>

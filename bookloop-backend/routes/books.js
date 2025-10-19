@@ -1,47 +1,96 @@
 const express = require("express");
 const router = express.Router();
 const Book = require("../models/Book");
+const multer = require("multer");
+
+// Multer setup for image uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max per file
+  fileFilter: (req, file, cb) => {
+    file.mimetype.startsWith("image/") ? cb(null, true) : cb(new Error("Only images allowed!"), false);
+  },
+});
+
+// Helper to convert image buffers to base64
+function convertImages(books) {
+  return books.map(book => {
+    const obj = book.toObject();
+    if (obj.images && obj.images.length > 0) {
+      obj.images = obj.images.map(img => ({
+        ...img,
+        data: img.data.toString("base64"),
+        url: `data:${img.contentType};base64,${img.data.toString("base64")}`,
+      }));
+    }
+    return obj;
+  });
+}
 
 // GET all books
 router.get("/", async (req, res) => {
   try {
     const books = await Book.find()
-      .populate("seller", "username email bio"); // populate seller info
-    res.json(books); // send array directly
+      .populate("seller", "username firstName lastName email bio phone location")
+      .sort({ dateAdded: -1 });
+    res.json(convertImages(books));
   } catch (err) {
-    console.error("Failed to fetch books:", err);
-    res.status(500).json({ error: "Failed to fetch books" });
+    console.error("❌ Error fetching books:", err);
+    res.status(500).json({ error: "Failed to fetch books: " + err.message });
   }
 });
 
-// ✅ GET books by current user (my listings)
+// GET books by user
 router.get("/my", async (req, res) => {
   try {
-    const userId = req.query.userId; // pass ?userId=xxx
-    if (!userId) {
-      return res.status(400).json({ error: "userId query param is required" });
-    }
+    const userId = req.query.userId;
+    if (!userId) return res.status(400).json({ error: "userId query param required" });
 
     const books = await Book.find({ seller: userId })
-      .populate("seller", "username email bio") // populate seller info
+      .populate("seller", "username firstName lastName email bio phone location")
+      .sort({ dateAdded: -1 })
       .exec();
 
-    res.json(books);
+    res.json(convertImages(books));
   } catch (err) {
-    console.error("Failed to fetch user books:", err);
-    res.status(500).json({ error: "Failed to fetch user books" });
+    console.error("❌ Error fetching user books:", err);
+    res.status(500).json({ error: "Failed to fetch user books: " + err.message });
   }
 });
 
 // POST new book
-router.post("/", async (req, res) => {
+router.post("/", upload.array("images", 5), async (req, res) => {
   try {
     console.log("📩 Incoming book payload:", req.body);
-    const { title, author, genre, condition, price, location, description, seller } = req.body;
+    console.log("📸 Files received:", req.files?.length || 0);
 
+    const { title, author, genre, condition, price, description, seller, location } = req.body;
     if (!title || !author || !seller) {
       return res.status(400).json({ error: "Title, author, and seller are required" });
     }
+
+    let locationData = {};
+    if (location) {
+      try {
+        locationData = typeof location === "string" ? JSON.parse(location) : location;
+      } catch {
+        locationData = { area: "", city: "", state: "", country: "" };
+      }
+    }
+
+    // Validate required location fields
+    if (!locationData.area || !locationData.city || !locationData.country) {
+      return res.status(400).json({ error: "Area, city, and country are required" });
+    }
+
+    // Process images
+    const images = req.files?.map(file => ({
+      data: file.buffer,
+      contentType: file.mimetype,
+      filename: file.originalname,
+      size: file.size,
+    })) || [];
 
     const book = new Book({
       title,
@@ -49,21 +98,94 @@ router.post("/", async (req, res) => {
       genre,
       condition,
       price,
-      location,
       description,
-      seller // sellerId from frontend
+      seller,
+      location: {
+        area: locationData.area.trim(),
+        city: locationData.city.trim(),
+        state: (locationData.state || "").trim(),
+        country: locationData.country.trim(),
+      },
+      images,
     });
 
     const savedBook = await book.save();
-    // Populate seller info
-await savedBook.populate("seller", "username email bio").execPopulate();
 
-res.status(201).json(savedBook);
-    console.log("✅ Book saved:", savedBook);
-    res.status(201).json(savedBook);
+    // Populate seller and convert images
+    const populatedBook = await Book.findById(savedBook._id)
+      .populate("seller", "username firstName lastName email bio phone location");
+
+    res.status(201).json(convertImages([populatedBook])[0]);
   } catch (err) {
-    console.error("Book save error:", err);
-    res.status(500).json({ error: "Failed to list book" });
+    console.error("❌ Book save error:", err);
+    res.status(500).json({ error: "Failed to list book: " + err.message });
+  }
+});
+
+// PUT update book
+router.put("/:id", upload.array("images", 5), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, author, genre, condition, price, description, deleteImages } = req.body;
+
+    if (!title || !author || !genre || !condition || !price) {
+      return res.status(400).json({ error: "All required fields must be filled" });
+    }
+
+    let locationData = {};
+    if (req.body.location) {
+      try {
+        locationData = JSON.parse(req.body.location);
+      } catch {
+        return res.status(400).json({ error: "Invalid location format" });
+      }
+    }
+
+    if (!locationData.area || !locationData.city || !locationData.country) {
+      return res.status(400).json({ error: "Area, city, and country are required" });
+    }
+
+    const existingBook = await Book.findById(id);
+    if (!existingBook) return res.status(404).json({ error: "Book not found" });
+
+    let finalImages = existingBook.images;
+    if (deleteImages) {
+      const imagesToDelete = Array.isArray(deleteImages) ? deleteImages : [deleteImages];
+      finalImages = finalImages.filter(img => !imagesToDelete.includes(img._id.toString()));
+    }
+
+    if (req.files?.length > 0) {
+      const newImages = req.files.map(file => ({
+        data: file.buffer,
+        contentType: file.mimetype,
+        filename: file.originalname,
+        size: file.size,
+      }));
+      finalImages = [...finalImages, ...newImages];
+    }
+
+    if (finalImages.length > 5) finalImages = finalImages.slice(0, 5);
+
+    const updatedBook = await Book.findByIdAndUpdate(
+      id,
+      {
+        title, author, genre, condition, price,
+        description: description || "",
+        location: {
+          area: locationData.area,
+          city: locationData.city,
+          state: locationData.state || "",
+          country: locationData.country,
+        },
+        images: finalImages,
+      },
+      { new: true, runValidators: true }
+    ).populate("seller", "username firstName lastName email bio phone location");
+
+    res.json(convertImages([updatedBook])[0]);
+  } catch (err) {
+    console.error("❌ Update error:", err);
+    res.status(500).json({ error: "Failed to update book: " + err.message });
   }
 });
 
@@ -72,29 +194,18 @@ router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { userId } = req.query;
-
-    console.log("🛠️ Delete attempt:", { id, userId });
-
-    if (!userId) {
-      return res.status(400).json({ error: "userId query param is required" });
-    }
+    if (!userId) return res.status(400).json({ error: "userId query param required" });
 
     const book = await Book.findById(id);
     if (!book) return res.status(404).json({ error: "Book not found" });
-
     if (!book.seller) return res.status(400).json({ error: "Book missing seller info" });
+    if (book.seller.toString() !== userId) return res.status(403).json({ error: "Not authorized" });
 
-    if (book.seller.toString() !== userId) {
-      return res.status(403).json({ error: "Not authorized to delete this listing" });
-    }
-
-    await book.deleteOne(); // ✅ correct for Mongoose 6+
-    console.log("✅ Book deleted:", id);
-
+    await book.deleteOne();
     res.json({ message: "Listing deleted successfully 🗑️" });
   } catch (err) {
     console.error("❌ Delete error:", err);
-    res.status(500).json({ error: "Failed to delete listing" });
+    res.status(500).json({ error: "Failed to delete listing: " + err.message });
   }
 });
 
