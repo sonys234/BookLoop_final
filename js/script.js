@@ -22,6 +22,78 @@ function getElement(id) {
     }
     return element;
 }
+// =========================
+// IMAGE UPLOAD & DISPLAY
+// =========================
+let uploadedImages = [];
+let currentImageIndex = 0;
+let currentBookImages = [];
+
+function handlePhotoUpload(event) {
+    const files = event.target.files;
+    const preview = document.getElementById('photo-preview');
+    
+    if (files.length === 0) return;
+    
+    // Check total images won't exceed 5
+    const totalAfterUpload = uploadedImages.length + files.length;
+    if (totalAfterUpload > 5) {
+        alert(`You can upload maximum 5 images. You already have ${uploadedImages.length} images selected.`);
+        event.target.value = ''; // Clear the file input
+        return;
+    }
+    
+    // Add new files to existing uploadedImages array (don't replace)
+    const newFiles = Array.from(files);
+    uploadedImages = [...uploadedImages, ...newFiles];
+    
+    // Update preview
+    updatePhotoPreview();
+    
+    // Clear the file input so same files can be selected again if needed
+    event.target.value = '';
+}
+
+function updatePhotoPreview() {
+    const preview = document.getElementById('photo-preview');
+    preview.innerHTML = '';
+    
+    if (uploadedImages.length === 0) {
+        preview.classList.add('hidden');
+        return;
+    }
+    
+    preview.classList.remove('hidden');
+    
+    uploadedImages.forEach((file, index) => {
+        if (!file.type.startsWith('image/')) {
+            alert('Please upload only image files');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const div = document.createElement('div');
+            div.className = 'relative group bg-gray-100 rounded-lg p-2';
+            div.innerHTML = `
+                <div class="h-32 flex items-center justify-center">
+                    <img src="${e.target.result}" alt="Preview" class="max-w-full max-h-full object-contain">
+                </div>
+                <button type="button" onclick="removeImage(${index})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors">
+                    ✕
+                </button>
+                <div class="text-xs text-gray-500 text-center mt-1">Image ${index + 1}</div>
+            `;
+            preview.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function removeImage(index) {
+    uploadedImages.splice(index, 1);
+    updatePhotoPreview();
+}
 
 // =========================
 // AUTH MODAL TABS - SAFE VERSION
@@ -270,63 +342,210 @@ function showTab(tabName) {
 // =========================
 // BOOK LISTINGS - SAFE VERSION
 // =========================
+// Enhanced listBook function with FormData and image uploads
 async function listBook(e) {
-    e.preventDefault();
+  e.preventDefault();
+
+  console.log("📤 Starting book listing process...");
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user"));
+  if (!user || !token) {
+    alert("Please log in first!");
+    return;
+  }
+
+  const title = document.getElementById("book-title").value.trim();
+  const author = document.getElementById("book-author").value.trim();
+  const genre = document.getElementById("book-genre").value.trim();
+  const condition = document.getElementById("book-condition").value.trim();
+  const price = document.getElementById("book-price").value.trim();
+  const description = document.getElementById("book-description").value.trim();
+
+  const area = document.getElementById("book-area").value.trim();
+  const city = document.getElementById("book-city").value.trim();
+  const state = document.getElementById("book-state").value.trim();
+  const country = document.getElementById("book-country").value.trim();
+
+  const location = { area, city, state, country };
+
+  // ✅ Build form data (must be multipart/form-data)
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("author", author);
+  formData.append("genre", genre);
+  formData.append("condition", condition);
+  formData.append("price", price);
+  formData.append("description", description);
+  formData.append("seller", user.id || user._id);
+  formData.append("location", JSON.stringify(location));
+
+  console.log("📸 Images to upload:", uploadedImages.length);
+  uploadedImages.forEach((file, index) => {
+    console.log(`  - Image ${index + 1}: ${file.name}`);
+    formData.append("images", file); // multer will read this as req.files
+  });
+
+  try {
+    const res = await fetch("http://localhost:5000/api/books", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`, // still fine with FormData
+      },
+      body: formData,
+    });
+
+    const data = await res.json();
+    console.log("📥 Response received:", res.status);
+
+    if (!res.ok) throw new Error(data.error || "Book listing failed");
+
+    console.log("✅ Book listed successfully:", data);
+
+    // Clear form + image previews
+    e.target.reset();
+    uploadedImages = [];
+    document.getElementById("photo-preview").innerHTML = "";
+    document.getElementById("photo-preview").classList.add("hidden");
+
+    showSuccessMessage("✅ Book listed successfully!");
+    renderUserListings();
+    renderBookFeed();
+  } catch (err) {
+    console.error("❌ Failed to list book:", err);
+    alert("Error: " + err.message);
+  }
+}
+
+
+async function updateListing() {
+    console.log("🔄 UPDATE LISTING STARTED");
     
-    if (!currentUser) {
-        alert("Please log in to list a book!");
+    const bookId = document.getElementById('edit-book-id').value;
+    console.log("📖 Book ID:", bookId);
+    
+    if (!bookId) {
+        alert("No book selected for editing");
         return;
     }
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-        alert("Missing auth token, please log in again!");
-        return;
-    }
-
-    // Safely get form values
-    const bookData = {
-        title: getElement("book-title")?.value || "",
-        author: getElement("book-author")?.value || "",
-        genre: getElement("book-genre")?.value || "",
-        condition: getElement("book-condition")?.value || "",
-        price: parseFloat(getElement("book-price")?.value) || 0,
-        location: getElement("pickup-location")?.value || "",
-        description: getElement("book-description")?.value || "",
-        seller: currentUser._id
+    // Create FormData
+    const formData = new FormData();
+    
+    // Add text fields
+    formData.append('title', document.getElementById('edit-book-title').value);
+    formData.append('author', document.getElementById('edit-book-author').value);
+    formData.append('genre', document.getElementById('edit-book-genre').value);
+    formData.append('condition', document.getElementById('edit-book-condition').value);
+    formData.append('price', document.getElementById('edit-book-price').value);
+    formData.append('description', document.getElementById('edit-book-description').value);
+    
+    // Add location
+    const locationData = {
+        area: document.getElementById('edit-book-area').value,
+        city: document.getElementById('edit-book-city').value,
+        state: document.getElementById('edit-book-state').value,
+        country: document.getElementById('edit-book-country').value
     };
+    formData.append('location', JSON.stringify(locationData));
 
-    // Validate required fields
-    if (!bookData.title || !bookData.author || !bookData.price) {
-        alert("Please fill in title, author, and price");
-        return;
-    }
+    // Add images to delete
+    imagesToDelete.forEach(imageId => {
+        formData.append('deleteImages', imageId);
+    });
+
+    // Add new images
+    editUploadedImages.forEach(file => {
+        formData.append('images', file);
+    });
 
     try {
-        const res = await fetch("http://localhost:5000/api/books", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(bookData),
+        const res = await fetch(`http://localhost:5000/api/books/${bookId}`, {
+            method: "PUT",
+            body: formData,
         });
 
-        if (!res.ok) {
-            throw new Error(`Book listing failed with status: ${res.status}`);
-        }
+        const result = await res.json();
 
-        const newBook = await res.json();
-        if (newBook) {
-            await fetchBooks();
-            await fetchUserListings();
-            e.target.reset();
-            showSuccessMessage("📚 Your book has been listed!");
+        if (res.ok) {
+            console.log("✅ SUCCESS:", result);
+            
+            // Update local state
+            updateLocalBookData(bookId, result);
+            
+            // Refresh UI
+            renderUserListings();
+            renderBookFeed();
+            
+            // Close modal and show success
+            closeEditListingModal();
+            showSuccessMessage("✅ Book updated successfully!");
+        } else {
+            console.error("❌ SERVER ERROR:", result);
+            alert("Error: " + (result.error || "Failed to update book"));
         }
     } catch (err) {
-        console.error("Book listing error:", err);
-        alert("Something went wrong while listing book");
+        console.error("❌ NETWORK ERROR:", err);
+        alert("Network error: " + err.message);
     }
+}
+// Image modal functions
+function openImageModal(book, index = 0) {
+    if (!book.images || book.images.length === 0) return;
+    
+    currentBookImages = book.images;
+    currentImageIndex = index;
+    
+    updateImageModal();
+    document.getElementById('image-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function closeImageModal() {
+    document.getElementById('image-modal').classList.add('hidden');
+    document.body.style.overflow = ''; // Restore scrolling
+    currentBookImages = [];
+}
+
+function navigateImage(direction) {
+    if (currentBookImages.length <= 1) return;
+    
+    currentImageIndex += direction;
+    
+    if (currentImageIndex < 0) {
+        currentImageIndex = currentBookImages.length - 1;
+    } else if (currentImageIndex >= currentBookImages.length) {
+        currentImageIndex = 0;
+    }
+    
+    updateImageModal();
+}
+
+function updateImageModal() {
+    const image = document.getElementById('modal-image');
+    const counter = document.getElementById('image-counter');
+    const thumbnailStrip = document.getElementById('thumbnail-strip');
+    
+    if (currentBookImages[currentImageIndex]) {
+        image.src = currentBookImages[currentImageIndex].url;
+    }
+    
+    counter.textContent = `${currentImageIndex + 1} / ${currentBookImages.length}`;
+    
+    // Update thumbnails
+    thumbnailStrip.innerHTML = '';
+    currentBookImages.forEach((img, index) => {
+        const thumb = document.createElement('img');
+        thumb.src = img.url;
+        thumb.alt = `Thumbnail ${index + 1}`;
+        thumb.className = `w-16 h-16 object-cover rounded cursor-pointer border-2 ${
+            index === currentImageIndex ? 'border-indigo-500' : 'border-transparent'
+        } hover:border-indigo-300`;
+        thumb.onclick = () => {
+            currentImageIndex = index;
+            updateImageModal();
+        };
+        thumbnailStrip.appendChild(thumb);
+    });
 }
 
 // =========================
@@ -531,7 +750,7 @@ async function deleteListing(bookId) {
     }
 
     try {
-        const res = await fetch(`http://localhost:5000/api/books/${bookId}`, {
+        const res = await fetch(`http://localhost:5000/api/books/${bookId}?userId=${currentUser._id}`, {
             method: "DELETE",
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -546,24 +765,21 @@ async function deleteListing(bookId) {
 
         const data = await res.json();
 
-        if (data.success || res.ok) {
-            // Remove from local state
-            books = books.filter(b => b._id !== bookId);
-            userListings = userListings.filter(b => b._id !== bookId);
-            
-            // Update UI
-            renderBookFeed();
-            renderUserListings();
-            
-            showSuccessMessage("🗑️ Listing deleted successfully!");
-        } else {
-            alert(data.error || "Failed to delete listing");
-        }
+        // Remove from local state
+        books = books.filter(b => b._id !== bookId);
+        userListings = userListings.filter(b => b._id !== bookId);
+        
+        // Update UI
+        renderBookFeed();
+        renderUserListings();
+        
+        showSuccessMessage("🗑️ Listing deleted successfully!");
     } catch (err) {
         console.error("Delete error:", err);
         alert("Error deleting listing: " + err.message);
     }
 }
+
 
 // =========================
 // CHAT SYSTEM IMPLEMENTATION
@@ -1339,6 +1555,66 @@ function closeSuccessModal() {
 }
 
 // Edit Profile Functions
+// =========================
+// EDIT PROFILE FUNCTION
+// =========================
+async function updateProfile(e) {
+    e.preventDefault(); // Prevent form submission and page refresh
+    
+    const username = document.getElementById('edit-username').value;
+    const email = document.getElementById('edit-email').value;
+    const phone = document.getElementById('edit-phone').value;
+    const location = document.getElementById('edit-location').value;
+    const bio = document.getElementById('edit-bio').value;
+
+    if (!username || !email) {
+        alert("Username and email are required!");
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert("Please log in again!");
+        return;
+    }
+
+    try {
+        const res = await fetch(`http://localhost:5000/api/auth/profile/${currentUser._id}`, {
+            method: "PUT",
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                username,
+                email,
+                phone,
+                location,
+                bio
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            // Update local user data
+            currentUser = { ...currentUser, username, email, phone, location, bio };
+            localStorage.setItem('user', JSON.stringify(currentUser));
+            
+            // Update UI
+            updateUserInterface();
+            
+            // Close modal and show success
+            closeEditProfile();
+            showSuccessMessage("✅ Profile updated successfully!");
+        } else {
+            alert("Error: " + (data.error || "Failed to update profile"));
+        }
+    } catch (err) {
+        console.error("Update profile error:", err);
+        alert("Error updating profile. Please try again.");
+    }
+}
 function openEditProfile() {
     const modal = document.getElementById('edit-profile-modal');
     if (!modal) return;

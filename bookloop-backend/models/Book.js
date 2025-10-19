@@ -6,10 +6,21 @@ const BookSchema = new mongoose.Schema({
   genre: String,
   condition: String,
   price: Number,
-  location: String,
+  location: {
+  area: String,
+  city: String,
+  state: String,
+  country: String
+},
   description: String,
   seller: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  dateAdded: { type: Date, default: Date.now }
+  dateAdded: { type: Date, default: Date.now },
+  images: [{
+    data: Buffer,
+    contentType: String,
+    filename: String,
+    size: Number
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model("Book", BookSchema);

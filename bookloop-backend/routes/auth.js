@@ -20,6 +20,12 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Email already in use" });
     }
 
+    // check if username already exists
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return res.status(400).json({ error: "Username already in use" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
@@ -44,12 +50,39 @@ router.post("/register", async (req, res) => {
 // =======================
 // UPDATE PROFILE
 // =======================
-// UPDATE PROFILE
 router.put("/profile/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const { username, firstName, lastName, email, phone, location, bio } = req.body;
 
-    const updates = (({ username, firstName, lastName, email, phone, location, bio }) => ({
+    console.log("📝 Update profile request for user:", id);
+    console.log("📝 Update data:", req.body);
+
+    // Validate required fields
+    if (!username || !email) {
+      return res.status(400).json({ error: "Username and email are required" });
+    }
+
+    // Check if email is already used by another user
+    const existingEmail = await User.findOne({ 
+      email, 
+      _id: { $ne: id } 
+    });
+    if (existingEmail) {
+      return res.status(400).json({ error: "Email already in use by another account" });
+    }
+
+    // Check if username is already used by another user
+    const existingUsername = await User.findOne({ 
+      username, 
+      _id: { $ne: id } 
+    });
+    if (existingUsername) {
+      return res.status(400).json({ error: "Username already in use by another account" });
+    }
+
+    // Prepare update object
+    const updates = {
       username,
       firstName,
       lastName,
@@ -57,22 +90,89 @@ router.put("/profile/:id", async (req, res) => {
       phone,
       location,
       bio,
-    }))(req.body);
+      updatedAt: new Date()
+    };
 
-    const user = await User.findByIdAndUpdate(id, updates, {
-      new: true,
-      runValidators: true,
-    }).select("-password");
+    // Remove undefined fields
+    Object.keys(updates).forEach(key => {
+      if (updates[key] === undefined) {
+        delete updates[key];
+      }
+    });
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+    const user = await User.findByIdAndUpdate(
+      id, 
+      updates, 
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).select("-password");
 
-    res.json({ user }); // 🔥 make it consistent with login
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    console.log("✅ Profile updated successfully:", user.username);
+    
+    res.json({ 
+      success: true,
+      message: "Profile updated successfully",
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.phone || "",
+        location: user.location || "",
+        bio: user.bio || "",
+      }
+    });
+
   } catch (err) {
     console.error("Update profile error:", err.message);
+    
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ error: "Validation error: " + err.message });
+    }
+    
     res.status(500).json({ error: "Failed to update profile" });
   }
 });
 
+// =======================
+// GET USER PROFILE
+// =======================
+router.get("/profile/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).select("-password");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.phone || "",
+        location: user.location || "",
+        bio: user.bio || "",
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }
+    });
+  } catch (err) {
+    console.error("Get profile error:", err.message);
+    res.status(500).json({ error: "Failed to fetch profile" });
+  }
+});
 
 // =======================
 // LOGIN
