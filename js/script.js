@@ -12,6 +12,13 @@ let conversations = [];
 let isHoveringChat = false;
 let chatCloseTimer = null;
 
+// Global variable for uploaded images
+let uploadedImages = [];
+
+// Image modal variables
+let currentBookImages = [];
+let currentImageIndex = 0;
+
 // =========================
 // Safe DOM Element Helper
 // =========================
@@ -22,77 +29,140 @@ function getElement(id) {
     }
     return element;
 }
-// =========================
-// IMAGE UPLOAD & DISPLAY
-// =========================
-let uploadedImages = [];
-let currentImageIndex = 0;
-let currentBookImages = [];
 
+// =========================
+// SIMPLE IMAGE UPLOAD SYSTEM
+// =========================
+
+// Handle multiple file selection
 function handlePhotoUpload(event) {
+    console.log("🔄 handlePhotoUpload called");
     const files = event.target.files;
-    const preview = document.getElementById('photo-preview');
     
-    if (files.length === 0) return;
+    if (!files || files.length === 0) {
+        console.log("❌ No files selected");
+        return;
+    }
+    
+    console.log(`📁 Files selected: ${files.length}`);
     
     // Check total images won't exceed 5
     const totalAfterUpload = uploadedImages.length + files.length;
     if (totalAfterUpload > 5) {
         alert(`You can upload maximum 5 images. You already have ${uploadedImages.length} images selected.`);
-        event.target.value = ''; // Clear the file input
+        event.target.value = '';
         return;
     }
     
-    // Add new files to existing uploadedImages array (don't replace)
-    const newFiles = Array.from(files);
-    uploadedImages = [...uploadedImages, ...newFiles];
-    
-    // Update preview
-    updatePhotoPreview();
-    
-    // Clear the file input so same files can be selected again if needed
-    event.target.value = '';
-}
-
-function updatePhotoPreview() {
-    const preview = document.getElementById('photo-preview');
-    preview.innerHTML = '';
-    
-    if (uploadedImages.length === 0) {
-        preview.classList.add('hidden');
-        return;
-    }
-    
-    preview.classList.remove('hidden');
-    
-    uploadedImages.forEach((file, index) => {
+    // Add all files to uploadedImages
+    Array.from(files).forEach((file, index) => {
+        console.log(`📸 Processing file ${index + 1}:`, file.name, file.type, file.size);
+        
         if (!file.type.startsWith('image/')) {
             alert('Please upload only image files');
             return;
         }
         
+        uploadedImages.push(file);
+    });
+    
+    console.log(`✅ Total images after upload: ${uploadedImages.length}`);
+    updatePhotoPreview();
+    event.target.value = '';
+}
+
+// Update photo preview (simple version)
+// Update photo preview (simple version - only images with remove button)
+function updatePhotoPreview() {
+    console.log("🔄 updatePhotoPreview called");
+    
+    const preview = document.getElementById('photo-preview');
+    const container = document.getElementById('image-preview-container');
+    const imageCount = document.getElementById('image-count');
+    
+    console.log("📋 Elements found:", {
+        preview: !!preview,
+        container: !!container,
+        imageCount: !!imageCount
+    });
+    
+    if (!preview || !container) {
+        console.error("❌ Missing required elements");
+        return;
+    }
+    
+    container.innerHTML = '';
+    console.log(`📊 Uploaded images count: ${uploadedImages.length}`);
+    
+    if (uploadedImages.length === 0) {
+        console.log("📭 No images to display, hiding preview");
+        preview.classList.add('hidden');
+        return;
+    }
+    
+    console.log("👁️ Showing preview section");
+    preview.classList.remove('hidden');
+    imageCount.textContent = `${uploadedImages.length}/5 images`;
+    
+    let imagesProcessed = 0;
+    
+    // Create simple preview items - only image with remove button
+    uploadedImages.forEach((file, index) => {
+        console.log(`🖼️ Processing image ${index}:`, file.name);
+        
         const reader = new FileReader();
+        
         reader.onload = function(e) {
-            const div = document.createElement('div');
-            div.className = 'relative group bg-gray-100 rounded-lg p-2';
-            div.innerHTML = `
-                <div class="h-32 flex items-center justify-center">
-                    <img src="${e.target.result}" alt="Preview" class="max-w-full max-h-full object-contain">
+            imagesProcessed++;
+            console.log(`✅ File ${index} loaded successfully: ${file.name}`);
+            
+            const item = document.createElement('div');
+            item.className = 'image-preview-item';
+            
+            item.innerHTML = `
+                <div class="relative">
+                    <img src="${e.target.result}" alt="Preview" class="preview-image">
+                    
+                    <!-- Remove Button - Top Right Corner -->
+                    <button type="button" class="remove-btn" onclick="removeImage(${index})" title="Remove image">
+                        ✕
+                    </button>
                 </div>
-                <button type="button" onclick="removeImage(${index})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors">
-                    ✕
-                </button>
-                <div class="text-xs text-gray-500 text-center mt-1">Image ${index + 1}</div>
             `;
-            preview.appendChild(div);
+            
+            container.appendChild(item);
+            console.log(`✅ Added image ${index} to container`);
+            
+            // Check if all images are processed
+            if (imagesProcessed === uploadedImages.length) {
+                console.log("🎉 All images processed and added to preview");
+            }
         };
+        
+        reader.onerror = function(error) {
+            console.error(`❌ Error reading file ${index}:`, error);
+            imagesProcessed++;
+        };
+        
         reader.readAsDataURL(file);
     });
 }
 
+// Remove image
 function removeImage(index) {
-    uploadedImages.splice(index, 1);
-    updatePhotoPreview();
+    console.log(`🗑️ removeImage called: index=${index}`);
+    
+    if (confirm('Are you sure you want to remove this image?')) {
+        uploadedImages.splice(index, 1);
+        console.log(`✅ Removed image ${index}, remaining: ${uploadedImages.length}`);
+        updatePhotoPreview();
+    }
+}
+
+// Get images for form submission
+function getImagesForSubmission() {
+    console.log("📦 Images for submission:", uploadedImages.length);
+    return uploadedImages;
 }
 
 // =========================
@@ -342,214 +412,146 @@ function showTab(tabName) {
 // =========================
 // BOOK LISTINGS - SAFE VERSION
 // =========================
-// Enhanced listBook function with FormData and image uploads
 async function listBook(e) {
-  e.preventDefault();
+    e.preventDefault();
 
-  console.log("📤 Starting book listing process...");
-  const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (!user || !token) {
-    alert("Please log in first!");
-    return;
-  }
-
-  const title = document.getElementById("book-title").value.trim();
-  const author = document.getElementById("book-author").value.trim();
-  const genre = document.getElementById("book-genre").value.trim();
-  const condition = document.getElementById("book-condition").value.trim();
-  const price = document.getElementById("book-price").value.trim();
-  const description = document.getElementById("book-description").value.trim();
-
-  const area = document.getElementById("book-area").value.trim();
-  const city = document.getElementById("book-city").value.trim();
-  const state = document.getElementById("book-state").value.trim();
-  const country = document.getElementById("book-country").value.trim();
-
-  const location = { area, city, state, country };
-
-  // ✅ Build form data (must be multipart/form-data)
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("author", author);
-  formData.append("genre", genre);
-  formData.append("condition", condition);
-  formData.append("price", price);
-  formData.append("description", description);
-  formData.append("seller", user.id || user._id);
-  formData.append("location", JSON.stringify(location));
-
-  console.log("📸 Images to upload:", uploadedImages.length);
-  uploadedImages.forEach((file, index) => {
-    console.log(`  - Image ${index + 1}: ${file.name}`);
-    formData.append("images", file); // multer will read this as req.files
-  });
-
-  try {
-    const res = await fetch("http://localhost:5000/api/books", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`, // still fine with FormData
-      },
-      body: formData,
-    });
-
-    const data = await res.json();
-    console.log("📥 Response received:", res.status);
-
-    if (!res.ok) throw new Error(data.error || "Book listing failed");
-
-    console.log("✅ Book listed successfully:", data);
-
-    // Clear form + image previews
-    e.target.reset();
-    uploadedImages = [];
-    document.getElementById("photo-preview").innerHTML = "";
-    document.getElementById("photo-preview").classList.add("hidden");
-
-    showSuccessMessage("✅ Book listed successfully!");
-    renderUserListings();
-    renderBookFeed();
-  } catch (err) {
-    console.error("❌ Failed to list book:", err);
-    alert("Error: " + err.message);
-  }
-}
-
-
-async function updateListing() {
-    console.log("🔄 UPDATE LISTING STARTED");
-    
-    const bookId = document.getElementById('edit-book-id').value;
-    console.log("📖 Book ID:", bookId);
-    
-    if (!bookId) {
-        alert("No book selected for editing");
+    console.log("📤 Starting book listing process...");
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || !token) {
+        alert("Please log in first!");
         return;
     }
 
-    // Create FormData
+    const title = document.getElementById("book-title").value.trim();
+    const author = document.getElementById("book-author").value.trim();
+    const genre = document.getElementById("book-genre").value.trim();
+    const condition = document.getElementById("book-condition").value.trim();
+    const price = document.getElementById("book-price").value.trim();
+    const description = document.getElementById("book-description").value.trim();
+
+    const area = document.getElementById("book-area").value.trim();
+    const city = document.getElementById("book-city").value.trim();
+    const state = document.getElementById("book-state").value.trim();
+    const country = document.getElementById("book-country").value.trim();
+
+    // Validation
+    if (!title || !author || !genre || !condition || !price || !area || !city || !country) {
+        alert("Please fill in all required fields!");
+        return;
+    }
+
+    const location = { area, city, state, country };
+
+    // ✅ Build form data (must be multipart/form-data)
     const formData = new FormData();
-    
-    // Add text fields
-    formData.append('title', document.getElementById('edit-book-title').value);
-    formData.append('author', document.getElementById('edit-book-author').value);
-    formData.append('genre', document.getElementById('edit-book-genre').value);
-    formData.append('condition', document.getElementById('edit-book-condition').value);
-    formData.append('price', document.getElementById('edit-book-price').value);
-    formData.append('description', document.getElementById('edit-book-description').value);
-    
-    // Add location
-    const locationData = {
-        area: document.getElementById('edit-book-area').value,
-        city: document.getElementById('edit-book-city').value,
-        state: document.getElementById('edit-book-state').value,
-        country: document.getElementById('edit-book-country').value
-    };
-    formData.append('location', JSON.stringify(locationData));
+    formData.append("title", title);
+    formData.append("author", author);
+    formData.append("genre", genre);
+    formData.append("condition", condition);
+    formData.append("price", price);
+    formData.append("description", description);
+    formData.append("seller", user.id || user._id);
+    formData.append("location", JSON.stringify(location));
 
-    // Add images to delete
-    imagesToDelete.forEach(imageId => {
-        formData.append('deleteImages', imageId);
-    });
-
-    // Add new images
-    editUploadedImages.forEach(file => {
-        formData.append('images', file);
+    // Get images
+    const images = getImagesForSubmission();
+    console.log("📸 Images to upload:", images.length);
+    
+    // Check if we have images
+    if (images.length === 0) {
+        alert("Please upload at least one image for your book!");
+        return;
+    }
+    
+    // Process images
+    images.forEach((file, index) => {
+        console.log(`  - Image ${index + 1}: ${file.name}`);
+        formData.append("images", file);
     });
 
     try {
-        const res = await fetch(`http://localhost:5000/api/books/${bookId}`, {
-            method: "PUT",
+        // Show loading state
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = "Listing Book...";
+        submitBtn.disabled = true;
+
+        const res = await fetch("http://localhost:5000/api/books", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
             body: formData,
         });
 
-        const result = await res.json();
+        const data = await res.json();
+        console.log("📥 Response received:", res.status, data);
 
-        if (res.ok) {
-            console.log("✅ SUCCESS:", result);
-            
-            // Update local state
-            updateLocalBookData(bookId, result);
-            
-            // Refresh UI
-            renderUserListings();
-            renderBookFeed();
-            
-            // Close modal and show success
-            closeEditListingModal();
-            showSuccessMessage("✅ Book updated successfully!");
-        } else {
-            console.error("❌ SERVER ERROR:", result);
-            alert("Error: " + (result.error || "Failed to update book"));
-        }
+        if (!res.ok) throw new Error(data.error || "Book listing failed");
+
+        console.log("✅ Book listed successfully:", data);
+
+        // ✅ FIX: Properly reset the form and image state
+        resetSellForm();
+
+        // SUCCESS: Refresh data and show home tab
+        showSuccessMessage("✅ Book listed successfully!");
+        
+        // Refresh books list immediately
+        await fetchBooks();
+        
+        // Refresh user listings
+        await fetchUserListings();
+        
+        // Show home tab to see the new book
+        showTab('home');
+        
+        // Force re-render of book feed
+        renderBookFeed();
+
     } catch (err) {
-        console.error("❌ NETWORK ERROR:", err);
-        alert("Network error: " + err.message);
+        console.error("❌ Failed to list book:", err);
+        alert("Error: " + err.message);
+        
+        // Reset button on error too
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.textContent = "List Book";
+        submitBtn.disabled = false;
     }
 }
-// Image modal functions
-function openImageModal(book, index = 0) {
-    if (!book.images || book.images.length === 0) return;
-    
-    currentBookImages = book.images;
-    currentImageIndex = index;
-    
-    updateImageModal();
-    document.getElementById('image-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
-}
 
-function closeImageModal() {
-    document.getElementById('image-modal').classList.add('hidden');
-    document.body.style.overflow = ''; // Restore scrolling
-    currentBookImages = [];
-}
-
-function navigateImage(direction) {
-    if (currentBookImages.length <= 1) return;
+// ✅ NEW FUNCTION: Reset sell form completely
+function resetSellForm() {
+    console.log("🔄 Resetting sell form...");
     
-    currentImageIndex += direction;
-    
-    if (currentImageIndex < 0) {
-        currentImageIndex = currentBookImages.length - 1;
-    } else if (currentImageIndex >= currentBookImages.length) {
-        currentImageIndex = 0;
+    // Reset form fields
+    const form = document.querySelector('#sell-tab form');
+    if (form) {
+        form.reset();
     }
     
-    updateImageModal();
-}
-
-function updateImageModal() {
-    const image = document.getElementById('modal-image');
-    const counter = document.getElementById('image-counter');
-    const thumbnailStrip = document.getElementById('thumbnail-strip');
+    // Reset uploaded images array
+    uploadedImages = [];
     
-    if (currentBookImages[currentImageIndex]) {
-        image.src = currentBookImages[currentImageIndex].url;
+    // Reset file input
+    const fileInput = document.getElementById('photo-input');
+    if (fileInput) {
+        fileInput.value = '';
     }
     
-    counter.textContent = `${currentImageIndex + 1} / ${currentBookImages.length}`;
+    // Hide and clear photo preview
+    const photoPreview = document.getElementById('photo-preview');
+    if (photoPreview) {
+        photoPreview.innerHTML = '';
+        photoPreview.classList.add('hidden');
+    }
     
-    // Update thumbnails
-    thumbnailStrip.innerHTML = '';
-    currentBookImages.forEach((img, index) => {
-        const thumb = document.createElement('img');
-        thumb.src = img.url;
-        thumb.alt = `Thumbnail ${index + 1}`;
-        thumb.className = `w-16 h-16 object-cover rounded cursor-pointer border-2 ${
-            index === currentImageIndex ? 'border-indigo-500' : 'border-transparent'
-        } hover:border-indigo-300`;
-        thumb.onclick = () => {
-            currentImageIndex = index;
-            updateImageModal();
-        };
-        thumbnailStrip.appendChild(thumb);
-    });
+    console.log("✅ Sell form reset complete");
 }
 
 // =========================
-// SIMPLIFIED BOOK CARD CREATION
+// BOOK CARD CREATION
 // =========================
 function createBookCard(book) {
     if (!book) return '';
@@ -576,29 +578,81 @@ function createBookCard(book) {
         genre: book.genre || 'fiction',
         condition: book.condition || 'new',
         price: book.price || 0,
-        location: book.location || 'Unknown Location'
+        location: book.location || {},
+        images: book.images || [],
+        description: book.description || '',
+        seller: book.seller || {}
     };
 
+    // Get location display text
+    const locationText = safeBook.location.area && safeBook.location.city 
+        ? `${safeBook.location.area}, ${safeBook.location.city}`
+        : 'Unknown Location';
+
+    // Create a safe string for the book data
+    const bookDataString = JSON.stringify(safeBook).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+
+    // Determine what to show in the image area
+    let imageContent = '';
+    if (safeBook.images && safeBook.images.length > 0) {
+        // Show the first image with proper aspect ratio and click handler for gallery
+        imageContent = `
+            <div class="h-64 bg-gray-100 flex items-center justify-center cursor-pointer overflow-hidden relative" 
+                 onclick="openImageModal('${bookDataString}', 0)">
+                <img src="${safeBook.images[0].url}" 
+                     alt="${safeBook.title}" 
+                     class="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300">
+                ${safeBook.images.length > 1 ? `
+                    <div class="absolute bottom-3 right-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
+                        +${safeBook.images.length - 1}
+                    </div>
+                ` : ''}
+                <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-300 flex items-center justify-center">
+                    <span class="text-white text-lg font-semibold opacity-0 hover:opacity-100 transition-opacity duration-300">
+                        👁️ View Images
+                    </span>
+                </div>
+            </div>
+        `;
+    } else {
+        // Show genre emoji as fallback
+        imageContent = `
+            <div class="h-64 bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center cursor-pointer relative"
+                 onclick="openImageModal('${bookDataString}', 0)">
+                <span class="text-white text-5xl">${genreEmojis[safeBook.genre] || "📖"}</span>
+                <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                    <span class="text-white text-lg font-semibold opacity-0 hover:opacity-100 transition-opacity duration-300">
+                        No Images Available
+                    </span>
+                </div>
+            </div>
+        `;
+    }
+
     return `
-    <div class="book-card bg-white rounded-lg shadow-md overflow-hidden">
-        <div class="h-48 bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
-            <span class="text-white text-4xl">${genreEmojis[safeBook.genre] || "📖"}</span>
-        </div>
+    <div class="book-card bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100">
+        ${imageContent}
         <div class="p-4">
-            <h3 class="font-semibold text-gray-900 mb-1">${safeBook.title}</h3>
-            <p class="text-sm text-gray-600 mb-2">${safeBook.author} • ${safeBook.genre}</p>
+            <h3 class="font-semibold text-gray-900 mb-1 truncate" title="${safeBook.title}">${safeBook.title}</h3>
+            <p class="text-sm text-gray-600 mb-2 truncate">${safeBook.author} • ${safeBook.genre}</p>
             <div class="flex items-center justify-between mb-3">
                 <span class="text-lg font-bold text-indigo-600">₹${safeBook.price}</span>
-                <span class="text-sm ${conditionColors[safeBook.condition] || 'bg-gray-100 text-gray-800'} px-2 py-1 rounded">
+                <span class="text-sm ${conditionColors[safeBook.condition] || 'bg-gray-100 text-gray-800'} px-2 py-1 rounded capitalize">
                     ${safeBook.condition?.replace("-", " ") || 'Unknown'}
                 </span>
             </div>
             <div class="flex items-center justify-between mt-2">
-                <p class="text-xs text-gray-500">📍 ${safeBook.location}</p>
+                <p class="text-xs text-gray-500 truncate flex-1 mr-2" title="${locationText}">📍 ${locationText}</p>
+                ${safeBook.description ? `
+                    <button onclick="openDescriptionModal('${safeBook.title}', '${safeBook.description.replace(/'/g, "&#39;")}', '${safeBook.seller.username || 'Unknown Seller'}')" 
+                            class="text-xs text-indigo-600 hover:text-indigo-800 whitespace-nowrap bg-indigo-50 px-2 py-1 rounded transition-colors">
+                        📝 Details
+                    </button>
+                ` : ''}
             </div>
             <button 
                 onclick="showInterest('${safeBook._id}')" 
-                class="w-full mt-3 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
+                class="w-full mt-3 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors duration-200 shadow-sm hover:shadow-md">
                 Interested
             </button>
         </div>
@@ -640,16 +694,18 @@ function renderBookFeed() {
 }
 
 // =========================
-// SIMPLIFIED FETCH FUNCTIONS
+// FETCH FUNCTIONS
 // =========================
 async function fetchBooks() {
     try {
+        console.log("🔄 Fetching books from server...");
         const res = await fetch("http://localhost:5000/api/books");
         if (!res.ok) {
             throw new Error(`Failed to fetch books: ${res.status}`);
         }
         const data = await res.json();
         books = data || [];
+        console.log(`📚 Loaded ${books.length} books`);
         renderBookFeed();
     } catch (err) {
         console.error("Error fetching books:", err);
@@ -719,9 +775,6 @@ function renderUserListings() {
             container.appendChild(card);
         });
     }
-    
-    // Update pending requests visibility when listings change
-    updatePendingRequestsVisibility();
 }
 
 // =========================
@@ -779,7 +832,6 @@ async function deleteListing(bookId) {
         alert("Error deleting listing: " + err.message);
     }
 }
-
 
 // =========================
 // CHAT SYSTEM IMPLEMENTATION
@@ -930,6 +982,7 @@ function updatePendingRequests(requests) {
         });
     }
 }
+
 async function updatePendingRequestsVisibility() {
     const pendingSection = document.getElementById('seller-pending-section');
     const container = document.getElementById('seller-pending-requests-list-widget');
@@ -987,7 +1040,6 @@ async function updatePendingRequestsVisibility() {
         container.innerHTML = '';
     }
 }
-
 
 // Initialize chat data
 async function initializeChat() {
@@ -1499,22 +1551,117 @@ function showDemoChat() {
 }
 
 // =========================
-// UTILITY FUNCTIONS
+// IMAGE MODAL FUNCTIONS
 // =========================
-
-// Photo upload handler
-function handlePhotoUpload(event) {
-    const file = event.target.files[0];
-    if (file) {
-        // For now, just show a success message since we don't have backend for file uploads
-        showSuccessMessage('📸 Photo selected! In a full implementation, this would upload to the server.');
+function openImageModal(bookDataString, index = 0) {
+    try {
+        // Parse the book data string back to object
+        const book = JSON.parse(bookDataString.replace(/&#39;/g, "'").replace(/&quot;/g, '"'));
         
-        // You can add actual file upload logic here later
-        // Example: uploadPhoto(file);
+        if (!book.images || book.images.length === 0) {
+            showSuccessMessage("No images available for this book");
+            return;
+        }
+        
+        currentBookImages = book.images;
+        currentImageIndex = index;
+        
+        updateImageModal();
+        const modal = document.getElementById('image-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        
+    } catch (error) {
+        console.error('Error opening image modal:', error);
+        showSuccessMessage("Error loading images");
     }
 }
 
-// Success message function
+function closeImageModal() {
+    document.getElementById('image-modal').classList.add('hidden');
+    document.body.style.overflow = ''; // Restore scrolling
+    currentBookImages = [];
+    currentImageIndex = 0;
+}
+
+function navigateImage(direction) {
+    if (currentBookImages.length <= 1) return;
+    
+    currentImageIndex += direction;
+    
+    if (currentImageIndex < 0) {
+        currentImageIndex = currentBookImages.length - 1;
+    } else if (currentImageIndex >= currentBookImages.length) {
+        currentImageIndex = 0;
+    }
+    
+    updateImageModal();
+}
+
+function updateImageModal() {
+    const image = document.getElementById('modal-image');
+    const counter = document.getElementById('image-counter');
+    const thumbnailStrip = document.getElementById('thumbnail-strip');
+    
+    if (currentBookImages[currentImageIndex]) {
+        image.src = currentBookImages[currentImageIndex].url;
+        image.alt = `Book image ${currentImageIndex + 1}`;
+    }
+    
+    counter.textContent = `${currentImageIndex + 1} / ${currentBookImages.length}`;
+    
+    // Update thumbnails
+    thumbnailStrip.innerHTML = '';
+    currentBookImages.forEach((img, index) => {
+        const thumb = document.createElement('img');
+        thumb.src = img.url;
+        thumb.alt = `Thumbnail ${index + 1}`;
+        thumb.className = `w-16 h-16 object-cover rounded cursor-pointer border-2 transition-all duration-200 ${
+            index === currentImageIndex ? 'border-indigo-500 scale-105' : 'border-transparent opacity-70 hover:opacity-100'
+        }`;
+        thumb.onclick = () => {
+            currentImageIndex = index;
+            updateImageModal();
+        };
+        thumbnailStrip.appendChild(thumb);
+    });
+}
+
+// Description modal function
+function openDescriptionModal(title, description, sellerName) {
+    const modal = document.getElementById('description-modal');
+    const titleElem = document.getElementById('description-title');
+    const contentElem = document.getElementById('description-content');
+    const sellerElem = document.getElementById('modal-seller-name');
+    const noDescElem = document.getElementById('no-description');
+    
+    if (titleElem) titleElem.textContent = title;
+    if (sellerElem) sellerElem.textContent = sellerName;
+    
+    if (description && description.trim() !== '') {
+        if (contentElem) {
+            contentElem.textContent = description;
+            contentElem.parentElement.classList.remove('hidden');
+        }
+        if (noDescElem) noDescElem.classList.add('hidden');
+    } else {
+        if (contentElem) contentElem.parentElement.classList.add('hidden');
+        if (noDescElem) noDescElem.classList.remove('hidden');
+    }
+    
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeDescriptionModal() {
+    const modal = document.getElementById('description-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// =========================
+// UTILITY FUNCTIONS
+// =========================
 function showSuccessMessage(msg) {
     // Create or use existing success modal
     let successModal = document.getElementById('success-modal');
@@ -1555,9 +1702,6 @@ function closeSuccessModal() {
 }
 
 // Edit Profile Functions
-// =========================
-// EDIT PROFILE FUNCTION
-// =========================
 async function updateProfile(e) {
     e.preventDefault(); // Prevent form submission and page refresh
     
@@ -1615,6 +1759,7 @@ async function updateProfile(e) {
         alert("Error updating profile. Please try again.");
     }
 }
+
 function openEditProfile() {
     const modal = document.getElementById('edit-profile-modal');
     if (!modal) return;
@@ -1670,6 +1815,31 @@ function searchBooks() {
     }
 }
 
+function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('genre-filter').value = '';
+    document.getElementById('condition-filter').value = '';
+    document.getElementById('min-price').value = '';
+    document.getElementById('max-price').value = '';
+    document.getElementById('area-filter').value = '';
+    document.getElementById('city-filter').value = '';
+    document.getElementById('state-filter').value = '';
+    document.getElementById('country-filter').value = '';
+    
+    // Reset search results to show all books
+    const container = getElement("search-results");
+    if (container) {
+        container.innerHTML = "";
+        books.forEach(book => {
+            const card = document.createElement("div");
+            card.innerHTML = createBookCard(book);
+            if (card.firstElementChild) {
+                container.appendChild(card.firstElementChild);
+            }
+        });
+    }
+}
+
 // =========================
 // SAFE INITIALIZATION
 // =========================
@@ -1686,6 +1856,21 @@ document.addEventListener("DOMContentLoaded", async function() {
         });
     }
     
+    // Add keyboard navigation for image modal
+    document.addEventListener('keydown', function(e) {
+        const imageModal = document.getElementById('image-modal');
+        if (imageModal && !imageModal.classList.contains('hidden')) {
+            if (e.key === 'ArrowLeft') {
+                navigateImage(-1);
+            } else if (e.key === 'ArrowRight') {
+                navigateImage(1);
+            } else if (e.key === 'Escape') {
+                closeImageModal();
+            }
+        }
+    });
+    
+    // Rest of your existing initialization code...
     try {
         // Check for existing user session
         const savedUser = localStorage.getItem("user");

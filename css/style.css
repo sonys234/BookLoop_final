@@ -1,0 +1,80 @@
+/* Simple Image Preview Styles - Only image with remove button */
+.image-preview-item {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    background: white;
+    transition: all 0.2s ease;
+    position: relative;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-preview-item:hover {
+    border-color: #6366f1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+}
+
+.preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+}
+
+.remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.remove-btn:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+#drop-zone:hover {
+    border-color: #6366f1;
+    background-color: #f8faff;
+}
+
+/* Photo Preview Section */
+#photo-preview {
+    transition: all 0.3s ease;
+}
+
+#image-preview-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+    width: 100%;
+}
+
+/* Image counter styling */
+#image-count {
+    background: #4f46e5;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
