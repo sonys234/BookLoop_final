@@ -636,121 +636,121 @@
     </div>
 
     <!-- Edit Listing Modal -->
-    <div id="edit-listing-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-90vh overflow-hidden">
-            <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-                <h3 class="font-semibold text-lg">Edit Book Listing</h3>
-                <button onclick="closeEditListingModal()" class="text-white hover:text-gray-200 text-xl">✕</button>
-            </div>
-            
-            <div class="p-6 overflow-y-auto max-h-96">
-                <form id="edit-listing-form" class="space-y-6">
-                    <input type="hidden" id="edit-book-id">
-                    
-                    <!-- Book Details -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Book Title *</label>
-                            <input type="text" id="edit-book-title" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Author *</label>
-                            <input type="text" id="edit-book-author" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Genre *</label>
-                            <select id="edit-book-genre" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                                <option value="">Select Genre</option>
-                                <option value="fiction">Fiction</option>
-                                <option value="non-fiction">Non-Fiction</option>
-                                <option value="science">Science</option>
-                                <option value="history">History</option>
-                                <option value="romance">Romance</option>
-                                <option value="mystery">Mystery</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Condition *</label>
-                            <select id="edit-book-condition" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                                <option value="">Select Condition</option>
-                                <option value="new">New</option>
-                                <option value="slightly-used">Slightly Used</option>
-                                <option value="well-read">Well-Read</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Price (₹) *</label>
-                            <input type="number" id="edit-book-price" required min="1" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
+<div id="edit-listing-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-90vh overflow-hidden">
+        <div class="bg-indigo-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+            <h3 class="font-semibold text-lg">Edit Book Listing</h3>
+            <button onclick="closeEditListingModal()" class="text-white hover:text-gray-200 text-xl">✕</button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto max-h-96">
+            <form id="edit-listing-form" class="space-y-6">
+                <input type="hidden" id="edit-book-id">
+                
+                <!-- Book Details -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Book Title *</label>
+                        <input type="text" id="edit-book-title" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                     </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Author *</label>
+                        <input type="text" id="edit-book-author" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Genre *</label>
+                        <select id="edit-book-genre" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select Genre</option>
+                            <option value="fiction">Fiction</option>
+                            <option value="non-fiction">Non-Fiction</option>
+                            <option value="science">Science</option>
+                            <option value="history">History</option>
+                            <option value="romance">Romance</option>
+                            <option value="mystery">Mystery</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Condition *</label>
+                        <select id="edit-book-condition" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select Condition</option>
+                            <option value="new">New</option>
+                            <option value="slightly-used">Slightly Used</option>
+                            <option value="well-read">Well-Read</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Price (₹) *</label>
+                        <input type="number" id="edit-book-price" required min="1" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                </div>
 
-                    <!-- Location Fields -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Area/Locality *</label>
-                            <input type="text" id="edit-book-area" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">City *</label>
-                            <input type="text" id="edit-book-city" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">State (Optional)</label>
-                            <input type="text" id="edit-book-state" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Country *</label>
-                            <input type="text" id="edit-book-country" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
+                <!-- Location Fields -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Area/Locality *</label>
+                        <input type="text" id="edit-book-area" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                        <textarea id="edit-book-description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Describe your book..."></textarea>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                        <input type="text" id="edit-book-city" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                     </div>
                     
-                    <!-- Current Images Display -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Images</label>
-                        <div id="current-images" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
-                            <!-- Current images will be displayed here -->
-                        </div>
-                        <p class="text-xs text-gray-500 mb-4">Click the ❌ button to remove individual images</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">State (Optional)</label>
+                        <input type="text" id="edit-book-state" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                     </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Country *</label>
+                        <input type="text" id="edit-book-country" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="edit-book-description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Describe your book..."></textarea>
+                </div>
+                
+                <!-- Current Images Display -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Images</label>
+                    <div id="current-images" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+                        <!-- Current images will be displayed here -->
+                    </div>
+                    <p class="text-xs text-gray-500 mb-4">Click the ❌ button to remove individual images</p>
+                </div>
 
-                    <!-- Add New Images -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Add More Images</label>
-                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors cursor-pointer" 
-                             onclick="document.getElementById('edit-photo-input').click()">
-                            <span class="text-4xl mb-2 block">➕</span>
-                            <p class="text-gray-600">Click to add more photos</p>
-                            <p class="text-xs text-gray-500 mt-1">Upload additional images (max 5 total)</p>
-                            <input type="file" id="edit-photo-input" multiple accept="image/*" class="hidden" 
-                                   onchange="handleEditPhotoUpload(event)">
-                        </div>
-                        <div id="edit-photo-preview" class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 hidden"></div>
+                <!-- Add New Images -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Add More Images</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors cursor-pointer" 
+                         onclick="document.getElementById('edit-photo-input').click()">
+                        <span class="text-4xl mb-2 block">➕</span>
+                        <p class="text-gray-600">Click to add more photos</p>
+                        <p class="text-xs text-gray-500 mt-1">Upload additional images (max 5 total)</p>
+                        <input type="file" id="edit-photo-input" multiple accept="image/*" class="hidden" 
+                               onchange="handleEditPhotoUpload(event)">
                     </div>
-                </form>
-            </div>
-            
-            <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg flex justify-between">
-                <button onclick="closeEditListingModal()" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-400 transition-colors">
-                    Cancel
-                </button>
-                <button onclick="updateListing()" class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors">
-                    Update Listing
-                </button>
-            </div>
+                    <div id="edit-photo-preview" class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 hidden"></div>
+                </div>
+            </form>
+        </div>
+        
+        <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg flex justify-between">
+            <button onclick="closeEditListingModal()" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-400 transition-colors">
+                Cancel
+            </button>
+            <button onclick="updateListing()" class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors">
+                Update Listing
+            </button>
         </div>
     </div>
+</div>
 
     <script src="js/script.js"></script>
 </body>

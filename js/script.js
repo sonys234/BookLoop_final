@@ -751,11 +751,14 @@ function renderUserListings() {
     } else {
         userListings.forEach(b => {
             const card = document.createElement("div");
-            card.className = "flex items-center justify-between p-4 border border-gray-200 rounded-lg mb-3 bg-white";
+            card.className = "flex items-center justify-between p-4 border border-gray-200 rounded-lg mb-3 bg-white hover:bg-gray-50 transition-colors";
             card.innerHTML = `
                 <div class="flex items-center space-x-4 flex-1">
                     <div class="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span class="text-white text-xl">📖</span>
+                        ${b.images && b.images.length > 0 ? 
+                            `<img src="${b.images[0].url}" alt="${b.title}" class="w-full h-full object-cover rounded-lg">` : 
+                            `<span class="text-white text-xl">📖</span>`
+                        }
                     </div>
                     <div class="flex-1">
                         <h4 class="font-semibold text-gray-900">${b.title || 'Unknown Title'}</h4>
@@ -764,6 +767,12 @@ function renderUserListings() {
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
+                    <button onclick="openEditListing('${b._id}')" 
+                            class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-1"
+                            title="Edit listing">
+                        <span>✏️</span>
+                        <span class="text-sm hidden sm:inline">Edit</span>
+                    </button>
                     <button onclick="deleteListing('${b._id}')" 
                             class="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-1"
                             title="Delete listing">
@@ -1914,3 +1923,355 @@ document.addEventListener("DOMContentLoaded", async function() {
         alert("Error loading the application. Please refresh the page.");
     }
 });
+
+// =========================
+// EDIT LISTING FUNCTIONS - FIXED VERSION
+// =========================
+
+// Global variable for edit listing images
+let editListingImages = [];
+let currentEditBookId = null;
+let imagesToDelete = []; // Track images to delete
+
+// Open edit listing modal
+function openEditListing(bookId) {
+    console.log("📝 Opening edit listing for book:", bookId);
+    
+    const book = userListings.find(b => b._id === bookId);
+    if (!book) {
+        alert("Book not found!");
+        return;
+    }
+
+    currentEditBookId = bookId;
+    editListingImages = [...book.images]; // Copy current images
+    imagesToDelete = []; // Reset delete tracking
+
+    // Fill form with current book data
+    document.getElementById('edit-book-id').value = book._id;
+    document.getElementById('edit-book-title').value = book.title || '';
+    document.getElementById('edit-book-author').value = book.author || '';
+    document.getElementById('edit-book-genre').value = book.genre || '';
+    document.getElementById('edit-book-condition').value = book.condition || '';
+    document.getElementById('edit-book-price').value = book.price || '';
+    document.getElementById('edit-book-description').value = book.description || '';
+    
+    // Fill location fields
+    document.getElementById('edit-book-area').value = book.location?.area || '';
+    document.getElementById('edit-book-city').value = book.location?.city || '';
+    document.getElementById('edit-book-state').value = book.location?.state || '';
+    document.getElementById('edit-book-country').value = book.location?.country || '';
+
+    // Display current images
+    displayCurrentImages();
+    
+    // Reset new images preview
+    const editPhotoPreview = document.getElementById('edit-photo-preview');
+    if (editPhotoPreview) {
+        editPhotoPreview.innerHTML = '';
+        editPhotoPreview.classList.add('hidden');
+    }
+
+    // Reset the update button text
+    const updateBtn = document.querySelector('#edit-listing-modal button[onclick="updateListing()"]');
+    if (updateBtn) {
+        updateBtn.textContent = "Update Listing";
+        updateBtn.disabled = false;
+    }
+
+    // Show modal
+    const modal = document.getElementById('edit-listing-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Display current images in edit modal
+function displayCurrentImages() {
+    const container = document.getElementById('current-images');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!editListingImages || editListingImages.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-4 text-gray-500">
+                <div class="text-2xl mb-2">📷</div>
+                <p class="text-sm">No images uploaded</p>
+            </div>
+        `;
+        return;
+    }
+
+    editListingImages.forEach((image, index) => {
+        // Skip images that are marked for deletion
+        if (image.markedForDeletion) return;
+
+        const imageDiv = document.createElement('div');
+        imageDiv.className = 'relative group';
+        imageDiv.innerHTML = `
+            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                <img src="${image.url}" alt="Book image ${index + 1}" 
+                     class="w-full h-full object-cover">
+            </div>
+            <button type="button" 
+                    onclick="removeCurrentImage(${index})"
+                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
+                    title="Remove image">
+                ✕
+            </button>
+            <div class="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                ${index + 1}
+            </div>
+        `;
+        container.appendChild(imageDiv);
+    });
+}
+
+// Remove current image from edit listing
+function removeCurrentImage(index) {
+    if (confirm('Are you sure you want to remove this image?')) {
+        // Mark image for deletion instead of removing immediately
+        if (editListingImages[index]._id) {
+            // This is an existing image from database
+            imagesToDelete.push(editListingImages[index]._id);
+        }
+        editListingImages[index].markedForDeletion = true;
+        displayCurrentImages();
+    }
+}
+
+// Handle new photo upload for edit listing
+function handleEditPhotoUpload(event) {
+    const files = event.target.files;
+    
+    if (!files || files.length === 0) return;
+    
+    // Count active images (not marked for deletion)
+    const activeImages = editListingImages.filter(img => !img.markedForDeletion);
+    
+    // Check total images won't exceed 5
+    const totalAfterUpload = activeImages.length + files.length;
+    if (totalAfterUpload > 5) {
+        alert(`You can have maximum 5 images. You already have ${activeImages.length} images.`);
+        event.target.value = '';
+        return;
+    }
+    
+    // Add new files to editListingImages
+    Array.from(files).forEach(file => {
+        if (!file.type.startsWith('image/')) {
+            alert('Please upload only image files');
+            return;
+        }
+        
+        // Create a preview object for new images
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            editListingImages.push({
+                file: file,
+                url: e.target.result,
+                isNew: true // Mark as new image
+            });
+            updateEditPhotoPreview();
+        };
+        reader.readAsDataURL(file);
+    });
+    
+    event.target.value = '';
+}
+
+// Update edit photo preview for new images
+function updateEditPhotoPreview() {
+    const preview = document.getElementById('edit-photo-preview');
+    if (!preview) return;
+
+    // Filter only new images
+    const newImages = editListingImages.filter(img => img.isNew && !img.markedForDeletion);
+    
+    if (newImages.length === 0) {
+        preview.classList.add('hidden');
+        return;
+    }
+
+    preview.classList.remove('hidden');
+    preview.innerHTML = '';
+
+    newImages.forEach((imageData, index) => {
+        // Find the actual index in editListingImages
+        const actualIndex = editListingImages.findIndex(img => img === imageData);
+        
+        const item = document.createElement('div');
+        item.className = 'relative group';
+        item.innerHTML = `
+            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                <img src="${imageData.url}" alt="New image" class="w-full h-full object-cover">
+            </div>
+            <button type="button" 
+                    onclick="removeNewImage(${actualIndex})"
+                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
+                    title="Remove new image">
+                ✕
+            </button>
+            <div class="absolute bottom-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                New
+            </div>
+        `;
+        preview.appendChild(item);
+    });
+}
+
+// Remove new image from edit listing
+function removeNewImage(index) {
+    if (confirm('Are you sure you want to remove this new image?')) {
+        editListingImages.splice(index, 1);
+        updateEditPhotoPreview();
+        displayCurrentImages(); // Refresh both displays
+    }
+}
+
+// Update listing - FIXED VERSION
+async function updateListing() {
+    console.log("🔄 Starting update process...");
+    
+    if (!currentEditBookId) {
+        alert("No book selected for editing!");
+        return;
+    }
+
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || !token) {
+        alert("Please log in first!");
+        return;
+    }
+
+    // Get form values
+    const title = document.getElementById('edit-book-title').value.trim();
+    const author = document.getElementById('edit-book-author').value.trim();
+    const genre = document.getElementById('edit-book-genre').value.trim();
+    const condition = document.getElementById('edit-book-condition').value.trim();
+    const price = document.getElementById('edit-book-price').value.trim();
+    const description = document.getElementById('edit-book-description').value.trim();
+
+    const area = document.getElementById('edit-book-area').value.trim();
+    const city = document.getElementById('edit-book-city').value.trim();
+    const state = document.getElementById('edit-book-state').value.trim();
+    const country = document.getElementById('edit-book-country').value.trim();
+
+    // Validation
+    if (!title || !author || !genre || !condition || !price || !area || !city || !country) {
+        alert("Please fill in all required fields!");
+        return;
+    }
+
+    const location = { area, city, state, country };
+
+    try {
+        // Show loading state
+        const updateBtn = document.querySelector('#edit-listing-modal button[onclick="updateListing()"]');
+        const originalText = updateBtn.textContent;
+        updateBtn.textContent = "Updating...";
+        updateBtn.disabled = true;
+
+        // Build form data
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("author", author);
+        formData.append("genre", genre);
+        formData.append("condition", condition);
+        formData.append("price", price);
+        formData.append("description", description);
+        formData.append("location", JSON.stringify(location));
+
+        // Add images to delete
+        if (imagesToDelete.length > 0) {
+            imagesToDelete.forEach(imageId => {
+                formData.append("deleteImages", imageId);
+            });
+        }
+
+        // Add new images (files)
+        const newImages = editListingImages.filter(img => img.isNew && img.file && !img.markedForDeletion);
+        console.log("📸 New images to upload:", newImages.length);
+        newImages.forEach(imageData => {
+            formData.append("images", imageData.file);
+        });
+
+        console.log("🔄 Sending update request...");
+        console.log("📝 Data:", {
+            title, author, genre, condition, price, description, location,
+            imagesToDelete: imagesToDelete.length,
+            newImages: newImages.length
+        });
+
+        const res = await fetch(`http://localhost:5000/api/books/${currentEditBookId}`, {
+            method: "PUT",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                // Don't set Content-Type for FormData - let browser set it with boundary
+            },
+            body: formData,
+        });
+
+        console.log("📥 Response status:", res.status);
+
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error("❌ Server error response:", errorText);
+            throw new Error(`Failed to update book: ${res.status}`);
+        }
+
+        const data = await res.json();
+        console.log("✅ Book updated successfully:", data);
+
+        // Close modal
+        closeEditListingModal();
+
+        // Refresh data
+        await fetchBooks();
+        await fetchUserListings();
+        
+        showSuccessMessage("✅ Book listing updated successfully!");
+
+    } catch (err) {
+        console.error("❌ Failed to update book:", err);
+        alert("Error updating book: " + err.message);
+        
+        // Reset button on error - IMPORTANT FIX
+        resetUpdateButton();
+    }
+}
+
+// Reset update button to normal state
+function resetUpdateButton() {
+    const updateBtn = document.querySelector('#edit-listing-modal button[onclick="updateListing()"]');
+    if (updateBtn) {
+        updateBtn.textContent = "Update Listing";
+        updateBtn.disabled = false;
+    }
+}
+
+// Close edit listing modal
+function closeEditListingModal() {
+    const modal = document.getElementById('edit-listing-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    
+    // Reset edit state
+    currentEditBookId = null;
+    editListingImages = [];
+    imagesToDelete = [];
+    
+    // Reset file input
+    const fileInput = document.getElementById('edit-photo-input');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    
+    // Reset the update button
+    resetUpdateButton();
+}

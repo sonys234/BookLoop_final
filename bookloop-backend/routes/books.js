@@ -123,70 +123,115 @@ router.post("/", upload.array("images", 5), async (req, res) => {
 });
 
 // PUT update book
+// PUT update book - SIMPLIFIED VERSION
 router.put("/:id", upload.array("images", 5), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, author, genre, condition, price, description, deleteImages } = req.body;
+    try {
+        const { id } = req.params;
+        const { title, author, genre, condition, price, description } = req.body;
 
-    if (!title || !author || !genre || !condition || !price) {
-      return res.status(400).json({ error: "All required fields must be filled" });
+        console.log("📝 Update request for book:", id);
+        console.log("📦 Received data:", {
+            title, author, genre, condition, price, description,
+            deleteImages: req.body.deleteImages,
+            filesCount: req.files?.length || 0
+        });
+
+        // Basic validation
+        if (!title || !author || !genre || !condition || !price) {
+            return res.status(400).json({ error: "All required fields must be filled" });
+        }
+
+        // Parse location
+        let locationData = {};
+        if (req.body.location) {
+            try {
+                locationData = JSON.parse(req.body.location);
+            } catch (err) {
+                return res.status(400).json({ error: "Invalid location format" });
+            }
+        }
+
+        // Validate location
+        if (!locationData.area || !locationData.city || !locationData.country) {
+            return res.status(400).json({ error: "Area, city, and country are required" });
+        }
+
+        // Find existing book
+        const existingBook = await Book.findById(id);
+        if (!existingBook) {
+            return res.status(404).json({ error: "Book not found" });
+        }
+
+        // Start with existing images
+        let finalImages = [...existingBook.images];
+        
+        // Handle image deletions
+        if (req.body.deleteImages) {
+            let imagesToDelete = [];
+            
+            // Handle both array and single string
+            if (Array.isArray(req.body.deleteImages)) {
+                imagesToDelete = req.body.deleteImages;
+            } else {
+                imagesToDelete = [req.body.deleteImages];
+            }
+            
+            console.log("🗑️ Deleting images:", imagesToDelete);
+            finalImages = finalImages.filter(img => !imagesToDelete.includes(img._id.toString()));
+        }
+
+        // Handle new image uploads
+        if (req.files && req.files.length > 0) {
+            console.log("📸 Adding new images:", req.files.length);
+            const newImages = req.files.map(file => ({
+                data: file.buffer,
+                contentType: file.mimetype,
+                filename: file.originalname,
+                size: file.size,
+            }));
+            finalImages = [...finalImages, ...newImages];
+        }
+
+        // Limit to 5 images total
+        if (finalImages.length > 5) {
+            finalImages = finalImages.slice(0, 5);
+        }
+
+        console.log("🖼️ Final images count:", finalImages.length);
+
+        // Update the book
+        const updatedBook = await Book.findByIdAndUpdate(
+            id,
+            {
+                title, 
+                author, 
+                genre, 
+                condition, 
+                price,
+                description: description || "",
+                location: {
+                    area: locationData.area,
+                    city: locationData.city,
+                    state: locationData.state || "",
+                    country: locationData.country,
+                },
+                images: finalImages,
+            },
+            { new: true, runValidators: true }
+        ).populate("seller", "username firstName lastName email bio phone location");
+
+        if (!updatedBook) {
+            return res.status(404).json({ error: "Book not found after update" });
+        }
+
+        // Convert images for response
+        const responseBook = convertImages([updatedBook])[0];
+        res.json(responseBook);
+
+    } catch (err) {
+        console.error("❌ Update error:", err);
+        res.status(500).json({ error: "Failed to update book: " + err.message });
     }
-
-    let locationData = {};
-    if (req.body.location) {
-      try {
-        locationData = JSON.parse(req.body.location);
-      } catch {
-        return res.status(400).json({ error: "Invalid location format" });
-      }
-    }
-
-    if (!locationData.area || !locationData.city || !locationData.country) {
-      return res.status(400).json({ error: "Area, city, and country are required" });
-    }
-
-    const existingBook = await Book.findById(id);
-    if (!existingBook) return res.status(404).json({ error: "Book not found" });
-
-    let finalImages = existingBook.images;
-    if (deleteImages) {
-      const imagesToDelete = Array.isArray(deleteImages) ? deleteImages : [deleteImages];
-      finalImages = finalImages.filter(img => !imagesToDelete.includes(img._id.toString()));
-    }
-
-    if (req.files?.length > 0) {
-      const newImages = req.files.map(file => ({
-        data: file.buffer,
-        contentType: file.mimetype,
-        filename: file.originalname,
-        size: file.size,
-      }));
-      finalImages = [...finalImages, ...newImages];
-    }
-
-    if (finalImages.length > 5) finalImages = finalImages.slice(0, 5);
-
-    const updatedBook = await Book.findByIdAndUpdate(
-      id,
-      {
-        title, author, genre, condition, price,
-        description: description || "",
-        location: {
-          area: locationData.area,
-          city: locationData.city,
-          state: locationData.state || "",
-          country: locationData.country,
-        },
-        images: finalImages,
-      },
-      { new: true, runValidators: true }
-    ).populate("seller", "username firstName lastName email bio phone location");
-
-    res.json(convertImages([updatedBook])[0]);
-  } catch (err) {
-    console.error("❌ Update error:", err);
-    res.status(500).json({ error: "Failed to update book: " + err.message });
-  }
 });
 
 // DELETE a book

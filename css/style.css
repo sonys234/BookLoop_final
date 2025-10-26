@@ -78,3 +78,36 @@
     font-size: 0.75rem;
     font-weight: 600;
 }
+
+/* Edit Listing Modal Styles */
+#edit-listing-modal {
+    backdrop-filter: blur(5px);
+}
+
+#current-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 1rem;
+}
+
+#edit-photo-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 1rem;
+}
+
+/* Image hover effects for edit modal */
+#current-images .relative:hover,
+#edit-photo-preview .relative:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease;
+}
+
+/* Scrollable modal content */
+.max-h-96 {
+    max-height: 24rem;
+}
+
+.max-h-90vh {
+    max-height: 90vh;
+}
