@@ -550,9 +550,6 @@ function resetSellForm() {
     console.log("✅ Sell form reset complete");
 }
 
-// =========================
-// BOOK CARD CREATION
-// =========================
 function createBookCard(book) {
     if (!book) return '';
     
@@ -581,8 +578,31 @@ function createBookCard(book) {
         location: book.location || {},
         images: book.images || [],
         description: book.description || '',
-        seller: book.seller || {}
+        seller: book.seller || {},
+        dateAdded: book.dateAdded || book.createdAt || new Date()
     };
+
+    // Get seller name (handle both populated seller object and direct seller string)
+    let sellerName = 'Unknown Seller';
+    if (safeBook.seller) {
+        if (typeof safeBook.seller === 'object') {
+            sellerName = safeBook.seller.username || 
+                        (safeBook.seller.firstName && safeBook.seller.lastName 
+                            ? `${safeBook.seller.firstName} ${safeBook.seller.lastName}` 
+                            : 'Unknown Seller');
+        } else {
+            sellerName = safeBook.seller;
+        }
+    }
+
+    // Format listing date
+    const listingDate = new Date(safeBook.dateAdded);
+    const timeAgo = getTimeAgo(listingDate);
+    const formattedDate = listingDate.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
 
     // Get location display text
     const locationText = safeBook.location.area && safeBook.location.city 
@@ -635,6 +655,26 @@ function createBookCard(book) {
         <div class="p-4">
             <h3 class="font-semibold text-gray-900 mb-1 truncate" title="${safeBook.title}">${safeBook.title}</h3>
             <p class="text-sm text-gray-600 mb-2 truncate">${safeBook.author} • ${safeBook.genre}</p>
+            
+            <!-- NEW: Seller and Date Information -->
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-2 text-xs text-gray-500">
+                    <span class="flex items-center">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        ${sellerName}
+                    </span>
+                    <span>•</span>
+                    <span class="flex items-center" title="${formattedDate}">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        ${timeAgo}
+                    </span>
+                </div>
+            </div>
+
             <div class="flex items-center justify-between mb-3">
                 <span class="text-lg font-bold text-indigo-600">₹${safeBook.price}</span>
                 <span class="text-sm ${conditionColors[safeBook.condition] || 'bg-gray-100 text-gray-800'} px-2 py-1 rounded capitalize">
@@ -644,7 +684,7 @@ function createBookCard(book) {
             <div class="flex items-center justify-between mt-2">
                 <p class="text-xs text-gray-500 truncate flex-1 mr-2" title="${locationText}">📍 ${locationText}</p>
                 ${safeBook.description ? `
-                    <button onclick="openDescriptionModal('${safeBook.title}', '${safeBook.description.replace(/'/g, "&#39;")}', '${safeBook.seller.username || 'Unknown Seller'}')" 
+                    <button onclick="openDescriptionModal('${safeBook.title}', '${safeBook.description.replace(/'/g, "&#39;")}', '${sellerName}')" 
                             class="text-xs text-indigo-600 hover:text-indigo-800 whitespace-nowrap bg-indigo-50 px-2 py-1 rounded transition-colors">
                         📝 Details
                     </button>
@@ -660,6 +700,67 @@ function createBookCard(book) {
     `;
 }
 
+// Helper functions
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - new Date(date);
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getConditionText(condition) {
+    const conditions = {
+        "new": "New",
+        "slightly-used": "Like New", 
+        "well-read": "Well Read",
+    };
+    return conditions[condition] || 'Used';
+}
+
+// Helper function to format time ago
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - new Date(date);
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+
+
+// Helper function to format time ago
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - new Date(date);
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 function renderBookFeed() {
     const feed = getElement("book-grid");
     if (!feed) {

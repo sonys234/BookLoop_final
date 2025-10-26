@@ -1,3 +1,4 @@
+
 /* Simple Image Preview Styles - Only image with remove button */
 .image-preview-item {
     border: 2px solid #e5e7eb;
@@ -111,3 +112,39 @@
 .max-h-90vh {
     max-height: 90vh;
 }
+
+/* Additional styles for seller and date info in book cards */
+.book-card .text-xs svg {
+    flex-shrink: 0;
+}
+
+.book-card .text-gray-500 {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+/* Ensure text doesn't overflow in the new seller/date section */
+.book-card .flex.items-center.space-x-2 {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.book-card .flex.items-center.space-x-2 > span {
+    display: flex;
+    align-items: center;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 640px) {
+    .book-card .flex.items-center.space-x-2 {
+        font-size: 0.7rem;
+    }
+    
+    .book-card .flex.items-center.space-x-2 svg {
+        width: 2.5px;
+        height: 2.5px;
+    }
+}
+
