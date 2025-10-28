@@ -560,13 +560,18 @@ function createBookCard(book) {
     };
     
     const genreEmojis = {
-        "fiction": "📖",
-        "non-fiction": "📚",
-        "science": "🔬",
-        "history": "📜",
-        "romance": "💕",
-        "mystery": "🔍",
-    };
+    "fiction": "📖",
+    "non-fiction": "📚",
+    "science": "🔬",
+    "history": "📜",
+    "romance": "💕",
+    "mystery": "🔍",
+    "fantasy": "🐉",
+    "biography": "👤",
+    "academic": "🎓",
+    "children": "🧒",
+    "self-help": "💪"
+};
 
     const safeBook = {
         _id: book._id || 'unknown',
