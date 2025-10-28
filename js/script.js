@@ -12,6 +12,17 @@ let conversations = [];
 let isHoveringChat = false;
 let chatCloseTimer = null;
 
+// =========================
+// Global State with Safe Initialization
+// =========================
+
+
+
+
+// 🆕 IMAGE CACHE SYSTEM
+let imageModalCache = new Map();
+let currentBookId = null;
+
 // Global variable for uploaded images
 let uploadedImages = [];
 
@@ -216,9 +227,9 @@ async function loginUser(identifier, password) {
             body: JSON.stringify({ identifier, password }),
         });
 
-        // Check if response is OK before parsing JSON
         if (!res.ok) {
-            throw new Error(`Login failed with status: ${res.status}`);
+            const errorText = await res.text();
+            throw new Error(`Login failed with status: ${res.status} - ${errorText}`);
         }
 
         const data = await res.json();
@@ -237,8 +248,18 @@ async function loginUser(identifier, password) {
             const loginModal = getElement("login-modal");
             if (loginModal) loginModal.classList.add("hidden");
             
-            await fetchBooks();
-            await fetchUserListings();
+            // Try to fetch books and listings, but don't block login on errors
+            try {
+                await fetchBooks();
+            } catch (bookErr) {
+                console.error("Books fetch failed but continuing:", bookErr);
+            }
+            
+            try {
+                await fetchUserListings();
+            } catch (listingErr) {
+                console.error("Listings fetch failed but continuing:", listingErr);
+            }
             
             // Update pending requests visibility after login
             updatePendingRequestsVisibility();
@@ -249,7 +270,7 @@ async function loginUser(identifier, password) {
         }
     } catch (err) {
         console.error("Login error:", err);
-        alert("Something went wrong while logging in");
+        alert("Something went wrong while logging in: " + err.message);
     }
 }
 
@@ -404,11 +425,37 @@ function showTab(tabName) {
     const target = getElement(`${tabName}-tab`);
     if (target) {
         target.classList.remove("hidden");
+        
+        // If showing buy tab, initialize with all books
+        if (tabName === "buy") {
+            const container = getElement("search-results");
+            if (container) {
+                container.innerHTML = "";
+                // Show message that filters need to be applied
+                if (books.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-span-full empty-state text-center py-10">
+                            <div class="text-6xl mb-4">📚</div>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">No books available</h3>
+                            <p class="text-gray-600">Check back later for new listings!</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="col-span-full text-center py-6">
+                            <div class="text-4xl mb-4">🔍</div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Set your filters and click Search</h3>
+                            <p class="text-gray-600 mb-4">Use the filters above to find your perfect book</p>
+                            <p class="text-sm text-gray-500">${books.length} books available to search through</p>
+                        </div>
+                    `;
+                }
+            }
+        }
     } else {
         console.warn(`Tab with id '${tabName}-tab' not found`);
     }
 }
-
 // =========================
 // BOOK LISTINGS - SAFE VERSION
 // =========================
@@ -416,6 +463,7 @@ async function listBook(e) {
     e.preventDefault();
 
     console.log("📤 Starting book listing process...");
+    debugFormState();
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user || !token) {
@@ -514,14 +562,18 @@ async function listBook(e) {
         console.error("❌ Failed to list book:", err);
         alert("Error: " + err.message);
         
-        // Reset button on error too
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        submitBtn.textContent = "List Book";
-        submitBtn.disabled = false;
+        // Reset button on error - MORE ROBUST
+        const submitBtn = document.querySelector('#sell-tab button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = "List Book";
+            submitBtn.disabled = false;
+            console.log("✅ Button reset after error");
+        }
     }
 }
 
 // ✅ NEW FUNCTION: Reset sell form completely
+// ✅ IMPROVED FUNCTION: Reset sell form completely
 function resetSellForm() {
     console.log("🔄 Resetting sell form...");
     
@@ -529,22 +581,48 @@ function resetSellForm() {
     const form = document.querySelector('#sell-tab form');
     if (form) {
         form.reset();
+        console.log("✅ Form reset");
+    } else {
+        console.warn("❌ Form not found");
     }
     
     // Reset uploaded images array
     uploadedImages = [];
+    console.log("✅ Uploaded images cleared");
     
     // Reset file input
     const fileInput = document.getElementById('photo-input');
     if (fileInput) {
         fileInput.value = '';
+        console.log("✅ File input cleared");
     }
     
     // Hide and clear photo preview
     const photoPreview = document.getElementById('photo-preview');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const imageCount = document.getElementById('image-count');
+    
     if (photoPreview) {
-        photoPreview.innerHTML = '';
         photoPreview.classList.add('hidden');
+        console.log("✅ Photo preview hidden");
+    }
+    
+    if (imagePreviewContainer) {
+        imagePreviewContainer.innerHTML = '';
+        console.log("✅ Image preview container cleared");
+    }
+    
+    if (imageCount) {
+        imageCount.textContent = '0/5 images';
+        console.log("✅ Image count reset");
+    }
+    
+    // Reset any loading states
+    const submitBtn = document.querySelector('#sell-tab button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.textContent = "List Book";
+        submitBtn.disabled = false;
+        console.log("✅ Submit button reset");
     }
     
     console.log("✅ Sell form reset complete");
@@ -560,18 +638,18 @@ function createBookCard(book) {
     };
     
     const genreEmojis = {
-    "fiction": "📖",
-    "non-fiction": "📚",
-    "science": "🔬",
-    "history": "📜",
-    "romance": "💕",
-    "mystery": "🔍",
-    "fantasy": "🐉",
-    "biography": "👤",
-    "academic": "🎓",
-    "children": "🧒",
-    "self-help": "💪"
-};
+        "fiction": "📖",
+        "non-fiction": "📚",
+        "science": "🔬",
+        "history": "📜",
+        "romance": "💕",
+        "mystery": "🔍",
+        "fantasy": "🐉",
+        "biography": "👤",
+        "academic": "🎓",
+        "children": "🧒",
+        "self-help": "💪"
+    };
 
     const safeBook = {
         _id: book._id || 'unknown',
@@ -587,7 +665,7 @@ function createBookCard(book) {
         dateAdded: book.dateAdded || book.createdAt || new Date()
     };
 
-    // Get seller name (handle both populated seller object and direct seller string)
+    // Get seller name
     let sellerName = 'Unknown Seller';
     if (safeBook.seller) {
         if (typeof safeBook.seller === 'object') {
@@ -614,16 +692,15 @@ function createBookCard(book) {
         ? `${safeBook.location.area}, ${safeBook.location.city}`
         : 'Unknown Location';
 
-    // Create a safe string for the book data
-    const bookDataString = JSON.stringify(safeBook).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+    // 🆕 Store book images in cache
+    imageModalCache.set(safeBook._id, safeBook.images);
 
-    // Determine what to show in the image area
+    // Determine what to show in the image area - SIMPLE APPROACH
     let imageContent = '';
     if (safeBook.images && safeBook.images.length > 0) {
-        // Show the first image with proper aspect ratio and click handler for gallery
         imageContent = `
             <div class="h-64 bg-gray-100 flex items-center justify-center cursor-pointer overflow-hidden relative" 
-                 onclick="openImageModal('${bookDataString}', 0)">
+                 onclick="openImageModalById('${safeBook._id}', 0)">
                 <img src="${safeBook.images[0].url}" 
                      alt="${safeBook.title}" 
                      class="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300">
@@ -640,10 +717,9 @@ function createBookCard(book) {
             </div>
         `;
     } else {
-        // Show genre emoji as fallback
         imageContent = `
             <div class="h-64 bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center cursor-pointer relative"
-                 onclick="openImageModal('${bookDataString}', 0)">
+                 onclick="openImageModalById('${safeBook._id}', 0)">
                 <span class="text-white text-5xl">${genreEmojis[safeBook.genre] || "📖"}</span>
                 <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
                     <span class="text-white text-lg font-semibold opacity-0 hover:opacity-100 transition-opacity duration-300">
@@ -661,7 +737,6 @@ function createBookCard(book) {
             <h3 class="font-semibold text-gray-900 mb-1 truncate" title="${safeBook.title}">${safeBook.title}</h3>
             <p class="text-sm text-gray-600 mb-2 truncate">${safeBook.author} • ${safeBook.genre}</p>
             
-            <!-- NEW: Seller and Date Information -->
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center space-x-2 text-xs text-gray-500">
                     <span class="flex items-center">
@@ -689,7 +764,7 @@ function createBookCard(book) {
             <div class="flex items-center justify-between mt-2">
                 <p class="text-xs text-gray-500 truncate flex-1 mr-2" title="${locationText}">📍 ${locationText}</p>
                 ${safeBook.description ? `
-                    <button onclick="openDescriptionModal('${safeBook.title}', '${safeBook.description.replace(/'/g, "&#39;")}', '${sellerName}')" 
+                    <button onclick="openDescriptionModal('${safeBook._id}')" 
                             class="text-xs text-indigo-600 hover:text-indigo-800 whitespace-nowrap bg-indigo-50 px-2 py-1 rounded transition-colors">
                         📝 Details
                     </button>
@@ -704,7 +779,6 @@ function createBookCard(book) {
     </div>
     `;
 }
-
 // Helper functions
 function getTimeAgo(date) {
     const now = new Date();
@@ -806,9 +880,13 @@ async function fetchBooks() {
     try {
         console.log("🔄 Fetching books from server...");
         const res = await fetch("http://localhost:5000/api/books");
+        
         if (!res.ok) {
-            throw new Error(`Failed to fetch books: ${res.status}`);
+            const errorText = await res.text();
+            console.error("❌ Server error details:", errorText);
+            throw new Error(`Failed to fetch books: ${res.status} - ${errorText}`);
         }
+        
         const data = await res.json();
         books = data || [];
         console.log(`📚 Loaded ${books.length} books`);
@@ -817,19 +895,44 @@ async function fetchBooks() {
         console.error("Error fetching books:", err);
         books = [];
         renderBookFeed();
+        
+        // Show user-friendly error message
+        if (err.message.includes('500')) {
+            showSuccessMessage("⚠️ Server is having issues. Please try again later.");
+        }
     }
 }
 
 async function fetchUserListings() {
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.log("No current user, skipping user listings fetch");
+        return;
+    }
     
     try {
+        console.log("🔄 Fetching user listings...");
         const res = await fetch("http://localhost:5000/api/books");
+        
         if (!res.ok) {
+            const errorText = await res.text();
+            console.error("❌ Server error fetching listings:", errorText);
             throw new Error(`Failed to fetch user listings: ${res.status}`);
         }
+        
         const data = await res.json();
-        userListings = (data || []).filter(b => b.seller && (b.seller._id === currentUser._id));
+        userListings = (data || []).filter(b => {
+            // Handle both populated seller object and direct seller ID
+            if (b.seller) {
+                if (typeof b.seller === 'object') {
+                    return b.seller._id === currentUser._id;
+                } else {
+                    return b.seller === currentUser._id;
+                }
+            }
+            return false;
+        });
+        
+        console.log(`📋 Loaded ${userListings.length} user listings`);
         renderUserListings();
     } catch (err) {
         console.error("Error fetching user listings:", err);
@@ -837,10 +940,16 @@ async function fetchUserListings() {
         renderUserListings();
     }
 }
-
 function renderUserListings() {
     const container = document.getElementById("user-listings");
+    const booksListed = document.getElementById("books-listed");
+    
     if (!container) return;
+
+    // Update books listed count
+    if (booksListed) {
+        booksListed.textContent = userListings.length;
+    }
 
     container.innerHTML = "";
 
@@ -1668,10 +1777,13 @@ function showDemoChat() {
 // =========================
 // IMAGE MODAL FUNCTIONS
 // =========================
+// =========================
+// IMAGE MODAL FUNCTIONS - FIXED VERSION
+// =========================
 function openImageModal(bookDataString, index = 0) {
     try {
         // Parse the book data string back to object
-        const book = JSON.parse(bookDataString.replace(/&#39;/g, "'").replace(/&quot;/g, '"'));
+        const book = JSON.parse(bookDataString.replace(/\\'/g, "'").replace(/\\"/g, '"'));
         
         if (!book.images || book.images.length === 0) {
             showSuccessMessage("No images available for this book");
@@ -1690,6 +1802,7 @@ function openImageModal(bookDataString, index = 0) {
         
     } catch (error) {
         console.error('Error opening image modal:', error);
+        console.error('Problematic bookDataString:', bookDataString);
         showSuccessMessage("Error loading images");
     }
 }
@@ -1985,6 +2098,9 @@ document.addEventListener("DOMContentLoaded", async function() {
         }
     });
     
+    // 🆕 INITIALIZE FILTERS
+    initializeFilters();
+    
     // Rest of your existing initialization code...
     try {
         // Check for existing user session
@@ -2029,7 +2145,6 @@ document.addEventListener("DOMContentLoaded", async function() {
         alert("Error loading the application. Please refresh the page.");
     }
 });
-
 // =========================
 // EDIT LISTING FUNCTIONS - FIXED VERSION
 // =========================
@@ -2380,4 +2495,313 @@ function closeEditListingModal() {
     
     // Reset the update button
     resetUpdateButton();
+}
+
+// Debug function to check form state
+function debugFormState() {
+    console.log("🔍 FORM DEBUG INFO:");
+    console.log("📝 Form fields:");
+    console.log("- Title:", document.getElementById('book-title')?.value);
+    console.log("- Author:", document.getElementById('book-author')?.value);
+    console.log("- Genre:", document.getElementById('book-genre')?.value);
+    console.log("- Condition:", document.getElementById('book-condition')?.value);
+    console.log("- Price:", document.getElementById('book-price')?.value);
+    console.log("📸 Uploaded images:", uploadedImages.length);
+    
+    const submitBtn = document.querySelector('#sell-tab button[type="submit"]');
+    console.log("🔄 Submit button state:", {
+        text: submitBtn?.textContent,
+        disabled: submitBtn?.disabled
+    });
+}
+
+// =========================
+// FILTER FUNCTIONS - FIXED VERSION
+// =========================
+
+function searchBooks() {
+    const query = getElement("search-input")?.value.toLowerCase() || "";
+    const genreFilter = getElement("genre-filter")?.value || "";
+    const conditionFilter = getElement("condition-filter")?.value || "";
+    const minPrice = parseFloat(getElement("min-price")?.value) || 0;
+    const maxPrice = parseFloat(getElement("max-price")?.value) || Infinity;
+    const areaFilter = getElement("area-filter")?.value.toLowerCase() || "";
+    const cityFilter = getElement("city-filter")?.value.toLowerCase() || "";
+    const stateFilter = getElement("state-filter")?.value.toLowerCase() || "";
+    const countryFilter = getElement("country-filter")?.value.toLowerCase() || "";
+
+    console.log("🔍 Applying filters:", {
+        query, genreFilter, conditionFilter, minPrice, maxPrice,
+        areaFilter, cityFilter, stateFilter, countryFilter
+    });
+
+    const filteredBooks = books.filter(book => {
+        // Text search
+        const matchesSearch = !query || 
+            (book.title?.toLowerCase().includes(query) || 
+             book.author?.toLowerCase().includes(query) ||
+             book.description?.toLowerCase().includes(query));
+
+        // Genre filter
+        const matchesGenre = !genreFilter || book.genre === genreFilter;
+
+        // Condition filter
+        const matchesCondition = !conditionFilter || book.condition === conditionFilter;
+
+        // Price filter
+        const bookPrice = book.price || 0;
+        const matchesPrice = bookPrice >= minPrice && bookPrice <= maxPrice;
+
+        // Location filters
+        const matchesArea = !areaFilter || 
+            (book.location?.area?.toLowerCase().includes(areaFilter));
+        
+        const matchesCity = !cityFilter || 
+            (book.location?.city?.toLowerCase().includes(cityFilter));
+        
+        const matchesState = !stateFilter || 
+            (book.location?.state?.toLowerCase().includes(stateFilter));
+        
+        const matchesCountry = !countryFilter || 
+            (book.location?.country?.toLowerCase().includes(countryFilter));
+
+        return matchesSearch && matchesGenre && matchesCondition && 
+               matchesPrice && matchesArea && matchesCity && 
+               matchesState && matchesCountry;
+    });
+
+    console.log(`📊 Filter results: ${filteredBooks.length} out of ${books.length} books`);
+    renderFilteredBooks(filteredBooks);
+}
+
+function renderFilteredBooks(filteredBooks) {
+    const container = getElement("search-results");
+    if (!container) {
+        console.warn("Search results container not found");
+        return;
+    }
+
+    container.innerHTML = "";
+
+    if (!filteredBooks || filteredBooks.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "col-span-full empty-state text-center py-10";
+        empty.innerHTML = `
+            <div class="text-6xl mb-4">🔍</div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">No books found</h3>
+            <p class="text-gray-600 mb-4">Try adjusting your search criteria or filters</p>
+            <button onclick="clearFilters()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700">
+                Clear Filters
+            </button>
+        `;
+        container.appendChild(empty);
+        return;
+    }
+
+    filteredBooks.forEach(book => {
+        const card = document.createElement("div");
+        card.innerHTML = createBookCard(book);
+        if (card.firstElementChild) {
+            container.appendChild(card.firstElementChild);
+        }
+    });
+}
+
+function clearFilters() {
+    // Clear all filter inputs
+    document.getElementById('search-input').value = '';
+    document.getElementById('genre-filter').value = '';
+    document.getElementById('condition-filter').value = '';
+    document.getElementById('min-price').value = '';
+    document.getElementById('max-price').value = '';
+    document.getElementById('area-filter').value = '';
+    document.getElementById('city-filter').value = '';
+    document.getElementById('state-filter').value = '';
+    document.getElementById('country-filter').value = '';
+
+    // Show all books again
+    const container = getElement("search-results");
+    if (container) {
+        container.innerHTML = "";
+        books.forEach(book => {
+            const card = document.createElement("div");
+            card.innerHTML = createBookCard(book);
+            if (card.firstElementChild) {
+                container.appendChild(card.firstElementChild);
+            }
+        });
+    }
+    
+    console.log("🧹 Filters cleared");
+}
+
+// Add event listeners for search button only
+function initializeFilters() {
+    // Only set up the search button click event
+    const searchButton = document.querySelector('#buy-tab button[onclick="searchBooks()"]');
+    if (searchButton) {
+        searchButton.addEventListener('click', searchBooks);
+        console.log("🔍 Search button event listener added");
+    }
+
+    // Add Enter key support for search input
+    const searchInput = getElement("search-input");
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchBooks();
+            }
+        });
+    }
+
+    console.log("🎛️ Filter system initialized (search button only)");
+}
+
+
+// Manual refresh function for user listings
+async function refreshUserListings() {
+    if (!currentUser) {
+        alert("Please log in first!");
+        return;
+    }
+    
+    try {
+        await fetchUserListings();
+        showSuccessMessage("✅ Listings refreshed!");
+    } catch (err) {
+        console.error("Error refreshing listings:", err);
+        alert("Error refreshing listings. Please try again.");
+    }
+}
+
+// =========================
+// SIMPLE IMAGE MODAL SYSTEM
+// =========================
+
+function openImageModalById(bookId, index = 0) {
+    console.log("Opening image modal for book:", bookId);
+    
+    const images = imageModalCache.get(bookId) || [];
+    
+    if (!images || images.length === 0) {
+        showSuccessMessage("No images available for this book");
+        return;
+    }
+    
+    currentBookImages = images;
+    currentImageIndex = index;
+    currentBookId = bookId;
+    
+    updateImageModal();
+    
+    const modal = document.getElementById('image-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function updateImageModal() {
+    const image = document.getElementById('modal-image');
+    const counter = document.getElementById('image-counter');
+    const thumbnailStrip = document.getElementById('thumbnail-strip');
+    
+    if (currentBookImages[currentImageIndex]) {
+        image.src = currentBookImages[currentImageIndex].url;
+        image.alt = `Book image ${currentImageIndex + 1}`;
+    }
+    
+    if (counter) {
+        counter.textContent = `${currentImageIndex + 1} / ${currentBookImages.length}`;
+    }
+    
+    // Update thumbnails
+    if (thumbnailStrip) {
+        thumbnailStrip.innerHTML = '';
+        currentBookImages.forEach((img, index) => {
+            const thumb = document.createElement('img');
+            thumb.src = img.url;
+            thumb.alt = `Thumbnail ${index + 1}`;
+            thumb.className = `w-16 h-16 object-cover rounded cursor-pointer border-2 transition-all duration-200 ${
+                index === currentImageIndex ? 'border-indigo-500 scale-105' : 'border-transparent opacity-70 hover:opacity-100'
+            }`;
+            thumb.onclick = () => {
+                currentImageIndex = index;
+                updateImageModal();
+            };
+            thumbnailStrip.appendChild(thumb);
+        });
+    }
+}
+
+function navigateImage(direction) {
+    if (currentBookImages.length <= 1) return;
+    
+    currentImageIndex += direction;
+    
+    if (currentImageIndex < 0) {
+        currentImageIndex = currentBookImages.length - 1;
+    } else if (currentImageIndex >= currentBookImages.length) {
+        currentImageIndex = 0;
+    }
+    
+    updateImageModal();
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('image-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    currentBookImages = [];
+    currentImageIndex = 0;
+    currentBookId = null;
+}
+
+// Also update the description modal to use the same approach
+function openDescriptionModal(bookId) {
+    const book = books.find(b => b._id === bookId);
+    if (!book) return;
+    
+    const modal = document.getElementById('description-modal');
+    const titleElem = document.getElementById('description-title');
+    const contentElem = document.getElementById('description-content');
+    const sellerElem = document.getElementById('modal-seller-name');
+    const noDescElem = document.getElementById('no-description');
+    
+    if (titleElem) titleElem.textContent = book.title;
+    
+    // Get seller name
+    let sellerName = 'Unknown Seller';
+    if (book.seller) {
+        if (typeof book.seller === 'object') {
+            sellerName = book.seller.username || 
+                        (book.seller.firstName && book.seller.lastName 
+                            ? `${book.seller.firstName} ${book.seller.lastName}` 
+                            : 'Unknown Seller');
+        } else {
+            sellerName = book.seller;
+        }
+    }
+    
+    if (sellerElem) sellerElem.textContent = sellerName;
+    
+    if (book.description && book.description.trim() !== '') {
+        if (contentElem) {
+            contentElem.textContent = book.description;
+            contentElem.parentElement.classList.remove('hidden');
+        }
+        if (noDescElem) noDescElem.classList.add('hidden');
+    } else {
+        if (contentElem) contentElem.parentElement.classList.add('hidden');
+        if (noDescElem) noDescElem.classList.remove('hidden');
+    }
+    
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeDescriptionModal() {
+    const modal = document.getElementById('description-modal');
+    if (modal) modal.classList.add('hidden');
 }
